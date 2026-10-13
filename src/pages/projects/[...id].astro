@@ -1,0 +1,10 @@
+---
+import { render } from 'astro:content';
+import { allProjects } from '../../lib/site';
+import ArticleLayout from '../../layouts/ArticleLayout.astro';
+import ProjectArt from '../../components/ProjectArt.astro';
+export async function getStaticPaths() { return (await allProjects()).map(project => ({ params: { id: project.id }, props: { project } })); }
+const { project } = Astro.props;
+const { Content, headings } = await render(project);
+---
+<ArticleLayout {...project.data} kind="projects" headings={headings} body={project.body}><div class:list={['article-project-art', `accent-${project.data.accent}`]}><ProjectArt diagram={project.data.diagram} /></div><Content /></ArticleLayout>

@@ -1,0 +1,31 @@
+---
+interface Props { diagram?: 'wave' | 'board' | 'circuit'; }
+const { diagram = 'board' } = Astro.props;
+---
+<div class:list={['project-art', `art-${diagram}`]} aria-hidden="true">
+  <svg viewBox="0 0 520 200" fill="none">
+    <defs><pattern id={`grid-${diagram}`} width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="currentColor" opacity=".17" /></pattern></defs>
+    <rect width="520" height="200" fill={`url(#grid-${diagram})`} />
+    {diagram === 'wave' ? <>
+      <rect x="128" y="30" width="264" height="143" rx="12" fill="currentColor" opacity=".08" />
+      <path d="M152 138V63h216M152 102h216M205 63v75M260 63v75M315 63v75" stroke="currentColor" opacity=".22" />
+      <path d="M152 120h31V77h43v43h42V77h43v43h43V77h14" stroke="currentColor" stroke-width="4" stroke-linejoin="round" />
+      <circle cx="369" cy="154" r="4" fill="currentColor" /><circle cx="354" cy="154" r="4" fill="currentColor" opacity=".4" />
+      <text x="90" y="42" fill="currentColor" font-size="11" font-family="monospace" opacity=".6">01 / SIGNAL</text>
+      <text x="404" y="159" fill="currentColor" font-size="11" font-family="monospace" opacity=".6">0 → 1</text>
+    </> : diagram === 'circuit' ? <>
+      <path d="M100 100h75m170 0h75M175 100v-40h85v80h85v-40M175 100v50h85V60h85v40" stroke="currentColor" stroke-width="3" opacity=".75" />
+      <rect x="228" y="76" width="64" height="48" rx="5" fill="currentColor" opacity=".12" /><circle cx="100" cy="100" r="9" fill="currentColor" /><circle cx="420" cy="100" r="9" fill="currentColor" /><path d="M247 100h26m-13-13v26" stroke="currentColor" stroke-width="3" />
+      <text x="190" y="182" fill="currentColor" font-size="11" font-family="monospace">A SMALL CIRCUIT, A NEW IDEA.</text>
+    </> : <>
+      <rect x="158" y="27" width="208" height="147" rx="15" fill="currentColor" opacity=".1" stroke="currentColor" stroke-width="2" />
+      <rect x="222" y="65" width="77" height="70" rx="8" fill="currentColor" opacity=".8" />
+      <path d="M239 74v-20m15 20v-20m15 20v-20m15 20v-20M239 126v20m15-20v20m15-20v20m15-20v20M231 82h-20m20 15h-20m20 15h-20m59-30h20m-20 15h20m-20 15h20" stroke="currentColor" stroke-width="3" />
+      <path d="M211 97h-28V48h46M310 112h35v43h-46" stroke="currentColor" stroke-width="2" opacity=".55" />
+      <circle cx="177" cy="155" r="5" fill="currentColor" /><circle cx="345" cy="45" r="5" fill="currentColor" />
+      <rect x="247" y="89" width="27" height="23" rx="2" stroke="var(--art-bg, #e7dfef)" stroke-width="2" />
+      <text x="72" y="55" fill="currentColor" font-size="11" font-family="monospace" opacity=".6">02 / BUILD</text>
+      <text x="384" y="158" fill="currentColor" font-size="11" font-family="monospace" opacity=".6">v0.1</text>
+    </>}
+  </svg>
+</div>

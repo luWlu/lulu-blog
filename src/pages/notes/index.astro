@@ -1,0 +1,35 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import NoteCard from '../../components/NoteCard.astro';
+import Icon from '../../components/Icon.astro';
+import { allNotes } from '../../lib/site';
+const notes = await allNotes();
+const categories = [...new Set(notes.map(note => note.data.category))];
+const publishedCount = notes.filter(note => !note.data.sample).length;
+---
+<Layout title="学习记录" active="notes">
+  <div class="container listing-page">
+    <header class="page-heading"><div class="section-kicker">THE LEARNING NOTEBOOK</div><h1>学习记录<span class="heading-spark">✳</span></h1><p>从「为什么」到「原来如此」，把每一次理解写下来。</p><div class="page-count">{publishedCount > 0 ? `${publishedCount} 篇正式笔记` : '第一篇正式笔记，正在路上'}<span>持续积累中</span></div></header>
+    <div class="filter-bar"><div class="filter-tabs" role="group" aria-label="按分类筛选"><button class="filter-tab active" data-filter="all" aria-pressed="true">全部 <span>{notes.length}</span></button>{categories.map(category => <button class="filter-tab" data-filter={category} aria-pressed="false">{category}</button>)}</div><span id="filter-count" class="filter-count" aria-live="polite">{notes.length} 篇内容</span></div>
+    {notes.some(note => note.data.sample) && <div class="sample-notice"><span class="tiny-dot"></span> 标有「示例内容」的文章用于展示版式，后续会替换为真实学习记录。</div>}
+    <div class="notes-grid listing-grid">{notes.map((note, index) => <NoteCard note={note} index={index} />)}</div>
+    <div id="filter-empty" class="empty-state" hidden={notes.length > 0}><Icon name="book" size={30} /><h2>这里还没有笔记。</h2><p>新的内容会慢慢长出来。</p></div>
+    <div class="listing-end"><span></span><p>慢慢来，每一篇都是新的积累。</p><span></span></div>
+  </div>
+  <script>
+    const tabs = document.querySelectorAll<HTMLButtonElement>('[data-filter]');
+    const cards = document.querySelectorAll<HTMLAnchorElement>('[data-note]');
+    const count = document.querySelector('#filter-count');
+    const empty = document.querySelector<HTMLElement>('#filter-empty');
+    function filter(category: string) {
+      let visible = 0;
+      cards.forEach(card => { card.hidden = category !== 'all' && card.dataset.category !== category; if (!card.hidden) visible++; });
+      tabs.forEach(tab => { const active = tab.dataset.filter === category; tab.classList.toggle('active', active); tab.setAttribute('aria-pressed', String(active)); });
+      if (count) count.textContent = `${visible} 篇内容`;
+      if (empty) empty.hidden = visible > 0;
+    }
+    const requested = new URLSearchParams(location.search).get('category');
+    if (requested && [...tabs].some(tab => tab.dataset.filter === requested)) filter(requested);
+    tabs.forEach(tab => tab.addEventListener('click', () => { const category = tab.dataset.filter!; filter(category); const address = new URL(location.href); if (category === 'all') address.searchParams.delete('category'); else address.searchParams.set('category', category); history.replaceState(null, '', address); }));
+  </script>
+</Layout>

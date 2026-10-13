@@ -1,0 +1,12 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import Icon from './Icon.astro';
+import ProjectArt from './ProjectArt.astro';
+import { url } from '../lib/site';
+interface Props { project: CollectionEntry<'projects'>; }
+const { project } = Astro.props;
+---
+<a class:list={['project-card', `accent-${project.data.accent}`]} href={url(`projects/${project.id}/`)}>
+  <ProjectArt diagram={project.data.diagram} />
+  <div class="project-card-body"><div class="project-card-meta"><span>{project.data.sample ? '示例项目 · 布局预览' : project.data.status}</span><Icon name="arrow" size={20} /></div><h3>{project.data.title}</h3><p>{project.data.description}</p><div class="tag-list">{project.data.tags.map(tag => <span>{tag}</span>)}</div></div>
+</a>

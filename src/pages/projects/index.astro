@@ -1,0 +1,15 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ProjectCard from '../../components/ProjectCard.astro';
+import Icon from '../../components/Icon.astro';
+import { allProjects } from '../../lib/site';
+const projects = await allProjects();
+const publishedCount = projects.filter(project => !project.data.sample).length;
+---
+<Layout title="项目展示" active="projects">
+  <div class="container listing-page"><header class="page-heading"><div class="section-kicker">THE LITTLE WORKSHOP</div><h1>项目展示<span class="heading-spark orange-text">↗</span></h1><p>有些想法，要亲手做出来才知道答案。</p><div class="page-count">{publishedCount > 0 ? `${publishedCount} 个正式项目` : '真实项目资料，等待整理上传'}<span>从想法到作品</span></div></header>
+    {projects.some(project => project.data.sample) && <div class="sample-notice"><span class="tiny-dot"></span> 下方是项目版式示例，不代表已经完成的个人成果。</div>}
+    {projects.length ? <div class="projects-grid">{projects.map(project => <ProjectCard project={project} />)}</div> : <div class="empty-state"><Icon name="folder" size={30} /><h2>新的项目，正在酝酿。</h2><p>从一个问题开始，慢慢找到答案。</p></div>}
+    <div class="workshop-note"><Icon name="chip" size={26} /><div><h2>过程也值得展示。</h2><p>这里会记录设计思路、实现过程、遇到的问题与改进方向。每一次调试，都是作品的一部分。</p></div></div>
+  </div>
+</Layout>
