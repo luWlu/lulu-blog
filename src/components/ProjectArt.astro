@@ -1,11 +1,12 @@
 ---
 interface Props { diagram?: 'wave' | 'board' | 'circuit'; }
 const { diagram = 'board' } = Astro.props;
+const gridId = `grid-${diagram}-${crypto.randomUUID()}`;
 ---
 <div class:list={['project-art', `art-${diagram}`]} aria-hidden="true">
   <svg viewBox="0 0 520 200" fill="none">
-    <defs><pattern id={`grid-${diagram}`} width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="currentColor" opacity=".17" /></pattern></defs>
-    <rect width="520" height="200" fill={`url(#grid-${diagram})`} />
+    <defs><pattern id={gridId} width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="currentColor" opacity=".17" /></pattern></defs>
+    <rect width="520" height="200" fill={`url(#${gridId})`} />
     {diagram === 'wave' ? <>
       <rect x="128" y="30" width="264" height="143" rx="12" fill="currentColor" opacity=".08" />
       <path d="M152 138V63h216M152 102h216M205 63v75M260 63v75M315 63v75" stroke="currentColor" opacity=".22" />

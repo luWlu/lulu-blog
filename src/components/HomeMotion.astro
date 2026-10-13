@@ -1,0 +1,104 @@
+<div class="home-reading-progress" aria-hidden="true"></div>
+<script>
+  const home = document.querySelector<HTMLElement>('[data-home]');
+  const hero = home?.querySelector<HTMLElement>('[data-hero]');
+  const artwork = home?.querySelector<HTMLElement>('[data-hero-art]');
+  const progress = document.querySelector<HTMLElement>('.home-reading-progress');
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const desktop = matchMedia('(min-width: 801px)');
+  const finePointer = matchMedia('(hover: hover) and (pointer: fine)');
+  const layers = Array.from(home?.querySelectorAll<HTMLElement>('[data-parallax]') ?? []).map(element => ({
+    element,
+    speed: Number(element.dataset.parallax) || 0,
+  }));
+  let frame = 0;
+  let heroVisible = true;
+  let pointerX = 0;
+  let pointerY = 0;
+
+  // 内容默认可见，只在进入视口时播放一次动画，脚本失败也不会遮住正文。
+  if (home && 'IntersectionObserver' in window) {
+    const revealObserver = new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        if (!reducedMotion.matches) {
+          entry.target.setAttribute('data-revealed', '');
+          entry.target.classList.add('is-revealed');
+        }
+        revealObserver.unobserve(entry.target);
+      }
+    }, { threshold: 0.08 });
+    home.querySelectorAll('[data-reveal]').forEach(element => revealObserver.observe(element));
+
+    if (hero) {
+      const heroObserver = new IntersectionObserver(([entry]) => {
+        heroVisible = entry.isIntersecting;
+        if (heroVisible) scheduleFrame();
+      });
+      heroObserver.observe(hero);
+    }
+  }
+
+  home?.addEventListener('animationend', event => {
+    if (event.animationName === 'home-reveal' && event.target instanceof HTMLElement) {
+      event.target.classList.remove('is-revealed');
+    }
+  });
+
+  function renderFrame() {
+    frame = 0;
+    if (document.hidden) return;
+    const scrollDistance = document.documentElement.scrollHeight - window.innerHeight;
+    if (progress) progress.style.transform = `scaleX(${scrollDistance > 0 ? Math.min(1, Math.max(0, window.scrollY / scrollDistance)) : 0})`;
+    if (!hero || !heroVisible || reducedMotion.matches || !desktop.matches) return;
+    const bounds = hero.getBoundingClientRect();
+    const travel = Math.min(Math.max(-bounds.top, 0), bounds.height);
+    for (const { element, speed } of layers) {
+      const depth = speed * 100;
+      element.style.setProperty('--parallax-y', `${Math.max(-36, Math.min(36, travel * speed)).toFixed(2)}px`);
+      element.style.setProperty('--pointer-x', `${(pointerX * depth).toFixed(2)}px`);
+      element.style.setProperty('--pointer-y', `${(pointerY * depth).toFixed(2)}px`);
+    }
+  }
+
+  // 只在滚动/指针发生变化时更新，离开首屏后不再计算插画视差。
+  function scheduleFrame() {
+    if (!frame) frame = requestAnimationFrame(renderFrame);
+  }
+  function resetMotion() {
+    pointerX = 0;
+    pointerY = 0;
+    layers.forEach(({ element }) => {
+      element.style.removeProperty('--parallax-y');
+      element.style.removeProperty('--pointer-x');
+      element.style.removeProperty('--pointer-y');
+    });
+    if (reducedMotion.matches) home?.querySelectorAll('.is-revealed').forEach(element => element.classList.remove('is-revealed'));
+    scheduleFrame();
+  }
+
+  artwork?.addEventListener('pointermove', event => {
+    if (reducedMotion.matches || !desktop.matches || !finePointer.matches || event.pointerType === 'touch') return;
+    const bounds = artwork.getBoundingClientRect();
+    pointerX = (event.clientX - bounds.left) / bounds.width - 0.5;
+    pointerY = (event.clientY - bounds.top) / bounds.height - 0.5;
+    scheduleFrame();
+  }, { passive: true });
+  artwork?.addEventListener('pointerleave', () => {
+    pointerX = 0;
+    pointerY = 0;
+    scheduleFrame();
+  }, { passive: true });
+  window.addEventListener('scroll', scheduleFrame, { passive: true });
+  window.addEventListener('resize', scheduleFrame, { passive: true });
+  window.addEventListener('pageshow', scheduleFrame);
+  window.addEventListener('pagehide', () => { cancelAnimationFrame(frame); frame = 0; });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { cancelAnimationFrame(frame); frame = 0; }
+    else scheduleFrame();
+  });
+  reducedMotion.addEventListener('change', resetMotion);
+  desktop.addEventListener('change', resetMotion);
+  finePointer.addEventListener('change', resetMotion);
+  scheduleFrame();
+</script>
