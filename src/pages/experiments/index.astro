@@ -1,0 +1,21 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ExperimentCard from '../../components/ExperimentCard.astro';
+import Icon from '../../components/Icon.astro';
+import { allExperiments, experimentStages, stepLabel, readingTime, url } from '../../lib/site';
+const experiments = await allExperiments();
+const publishedCount = experiments.filter(item => !item.data.sample).length;
+const totalMinutes = experiments.reduce((sum, item) => sum + readingTime(item.body), 0);
+const groups = experimentStages.map(stage => ({ stage, items: experiments.filter(item => item.data.stage === stage) })).filter(group => group.items.length > 0);
+const stageHints: Record<string, string> = { 前置: '先把工具链和引脚跑通', 基础: '数字接口与波形的基本功', 进阶: '模拟量的采集与输出' };
+---
+<Layout title="实验记录" active="experiments">
+  <div class="container listing-page">
+    <header class="page-heading"><div class="section-kicker">THE ZYNQ LAB</div><h1>实验记录<span class="heading-spark">✦</span></h1><p>在 Zynq-7035 核心板与自制 AD/DA 底板上，从点灯一路做到模拟量的采集与输出。每个实验都留下可复现的步骤、关键代码和踩坑记录。</p><div class="page-count">{publishedCount > 0 ? `${publishedCount} 个实验` : '实验整理中'}<span>约 {totalMinutes} 分钟阅读</span></div></header>
+    {experiments.some(item => item.data.sample) && <div class="sample-notice"><span class="tiny-dot"></span> 标有「示例内容」的实验用于展示版式，不代表最终内容。</div>}
+    {experiments.length > 0 && <ol class="experiment-path" aria-label="实验学习路径">{experiments.map(item => <li><a href={url(`experiments/${item.id}/`)}><b>{stepLabel(item.data.order)}</b><em>{item.data.title}</em></a></li>)}</ol>}
+    {groups.map(group => <section class="experiment-group" aria-label={`${group.stage}实验`}><div class="experiment-group-title">{group.stage}<i></i>{stageHints[group.stage]}</div><div class="experiments-grid">{group.items.map(item => <ExperimentCard experiment={item} />)}</div></section>)}
+    {experiments.length === 0 && <div class="empty-state"><Icon name="chip" size={30} /><h2>实验还在整理中。</h2><p>整理好之后会出现在这里。</p></div>}
+    <div class="workshop-note"><Icon name="chip" size={26} /><div><h2>过程也值得展示。</h2><p>「接线 → 仿真 → 上板 → 排查」的完整过程，比一张结果照片更有用。每个实验页都保留了当时的接线表、参数和出错后的排查思路。</p></div></div>
+  </div>
+</Layout>

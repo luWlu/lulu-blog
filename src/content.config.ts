@@ -28,4 +28,18 @@ const projects = defineCollection({
   }),
 });
 
-export const collections = { notes, projects };
+const experiments = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/experiments' }),
+  schema: z.object({
+    ...common,
+    order: z.number().default(999),
+    stage: z.enum(['前置', '基础', '进阶']).default('基础'),
+    status: z.enum(['计划中', '进行中', '已完成']).default('已完成'),
+    board: z.string().default('Zynq-7020 (XC7Z020)'),
+    tools: z.array(z.string()).default([]),
+    accent: z.enum(['purple', 'lime', 'orange']).default('purple'),
+    diagram: z.enum(['wave', 'board', 'circuit']).default('wave'),
+  }),
+});
+
+export const collections = { notes, projects, experiments };

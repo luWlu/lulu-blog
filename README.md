@@ -2,6 +2,8 @@
 
 为 lulu 制作的个人博客。紫色主调搭配青柠绿与珊瑚橙，以电路、实验和笔记为视觉元素。使用 Astro 生成静态网页，文章与项目通过 Markdown 文件维护。
 
+> 日常怎么写内容、怎么发布、出问题怎么排查，见操作手册：`D:\ai_coding\博客操作手册.md`（放在项目上一级目录，不在仓库里）。
+
 ## 本地打开
 
 需要 Node.js 22.12.0 或更新版本，推荐 Node.js 24。
@@ -26,7 +28,8 @@ npm run preview
 
 ## 目前包含
 
-- 首页、学习记录、项目展示、关于我与 404 页面。
+- 首页、实验记录、学习记录、项目展示、关于我与 404 页面。
+- Zynq 实验记录：从点灯入门、继电器控制，到边沿捕获、脉宽测量、PWM 输出，再到模拟量的采集与输出，形成一条按 `order` 排序的学习路径；每页含接线表、关键 Verilog 代码、内联 SVG 时序图与踩坑记录。
 - Markdown 文章与项目详情、自动目录、代码高亮。
 - 学习记录分类筛选，分类会同步到地址栏。
 - 本地全文条目搜索：匹配标题、简介与标签。支持 Ctrl / Command + K，也支持按 `/` 打开。
@@ -73,6 +76,28 @@ draft: false
 
 代码链接和演示链接不要填占位地址；没有时省略这两项。
 
+## 新增一个实验
+
+把 `templates/experiment.md` 复制到 `src/content/experiments/`。与笔记的写法相同，另外支持：
+
+- `order`：学习路径序号，决定列表排序和卡片上的 `STEP 0x`，接着现有最大值往下排。
+- `stage`：`前置` / `基础` / `进阶`，实验列表页按它分组。
+- `status`：`计划中` / `进行中` / `已完成`。
+- `board`：硬件平台，例如 `"Zynq-7035 核心板 + 自制 AD/DA 底板"`。
+- `tools`：用到的工具与仪器，例如 `["Vivado 2020.2", "示波器"]`。
+- `accent`：`purple` / `lime` / `orange`，控制详情页顶部插画配色。
+- `diagram`：`wave` / `board` / `circuit`，控制详情页顶部插画。
+
+正文推荐结构：这个实验要解决什么 → 硬件连接（接线表）→ 原理与关键代码 → 仿真验证 → 上板步骤 → 踩过的坑 → 下一步。
+
+示意图优先用内联 SVG，颜色写 `currentColor`（深色模式下才看得见）。暂时没有截图的位置用占位块：
+
+```html
+<div class="shot-placeholder"><strong>截图待补</strong>：这里需要一张 XXX 截图（写清来源）</div>
+```
+
+拿到截图后放进 `src/content/experiments/images/`，再用相对路径引用：`![说明](./images/文件名.png)`。注意**图片必须先存在再引用**，引用了不存在的图片会让构建直接失败（`[ImageNotFound]`）。
+
 ## 添加图片
 
 推荐将图片放在文章所在文件夹，并使用相对地址。Astro 会处理 Markdown 中引用的本地图片，并适配部署的路径。
@@ -105,6 +130,9 @@ src/content/notes/
 - 网站名称、作者、简介：`src/lib/site.ts`。
 - 首页文案与插画：`src/pages/index.astro`。
 - 个人介绍：`src/pages/about/index.astro`。
+- 实验列表页导语、分组说明与学习路径：`src/pages/experiments/index.astro`。
+- 实验详情页信息栏（平台/状态/工具）：`src/components/ExperimentMeta.astro`。
+- 实验卡片：`src/components/ExperimentCard.astro`；实验相关样式在 `src/styles/global.css` 末尾「实验记录」一段。
 - 配色、字体与布局：`src/styles/global.css`。
 - 站点图标：`public/favicon.svg`。
 - 社交分享图：`public/social-card.svg`。SVG 分享图的预览支持取决于目标平台；如需稳定的社交卡片预览，可换成 PNG 并更新 Layout。

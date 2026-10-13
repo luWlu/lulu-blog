@@ -1,7 +1,8 @@
 import type { APIRoute } from 'astro';
-import { allNotes, allProjects, url } from '../lib/site';
+import { allNotes, allProjects, allExperiments, url } from '../lib/site';
 export const GET: APIRoute = async context => {
-  const paths = ['', 'notes/', 'projects/', 'about/'];
+  const paths = ['', 'experiments/', 'notes/', 'projects/', 'about/'];
+  for (const experiment of await allExperiments()) if (!experiment.data.sample) paths.push(`experiments/${experiment.id}/`);
   for (const note of await allNotes()) if (!note.data.sample) paths.push(`notes/${note.id}/`);
   for (const project of await allProjects()) if (!project.data.sample) paths.push(`projects/${project.id}/`);
   const entries = paths.map(path => `<url><loc>${new URL(url(path), context.site).href.replaceAll('&', '&amp;')}</loc></url>`).join('');

@@ -1,0 +1,14 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import Icon from './Icon.astro';
+import { url, dateLabel, readingTime, stepLabel } from '../lib/site';
+interface Props { experiment: CollectionEntry<'experiments'>; }
+const { experiment } = Astro.props;
+---
+<a href={url(`experiments/${experiment.id}/`)} class="experiment-card" data-experiment>
+  <div class="experiment-card-top"><span class="experiment-index">{stepLabel(experiment.data.order)}</span><span class="category-pill">{experiment.data.stage}</span>{experiment.data.sample && <span class="sample-label">示例内容</span>}<Icon name="arrow" size={19} class="card-arrow" /></div>
+  <h3>{experiment.data.title}</h3>
+  <p>{experiment.data.description}</p>
+  {experiment.data.tools.length > 0 && <div class="experiment-card-tools">{experiment.data.tools.slice(0, 4).map(tool => <span>{tool}</span>)}</div>}
+  <div class="experiment-card-bottom"><time datetime={experiment.data.date.toISOString()}>{dateLabel(experiment.data.date)}</time><span><Icon name="clock" size={13} /> {readingTime(experiment.body)} 分钟阅读</span></div>
+</a>

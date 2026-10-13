@@ -1,0 +1,12 @@
+---
+import { dateLabel, stepLabel } from '../lib/site';
+interface Props { stage: string; status: string; board: string; tools: string[]; date: Date; order: number; }
+const { stage, status, board, tools, date, order } = Astro.props;
+---
+<div class="experiment-spec">
+  <div><span>学习路径</span><strong>{stepLabel(order)} · {stage}</strong></div>
+  <div><span>硬件平台</span><strong>{board}</strong></div>
+  <div><span>状态</span><strong>{status}</strong></div>
+  <div><span>完成日期</span><strong>{dateLabel(date)}</strong></div>
+  {tools.length > 0 && <div><span>工具与仪器</span><strong>{tools.join(' · ')}</strong></div>}
+</div>
