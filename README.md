@@ -2,7 +2,7 @@
 
 为 lulu 制作的个人博客。紫色主调搭配青柠绿与珊瑚橙，以电路、实验和笔记为视觉元素。使用 Astro 生成静态网页，文章与项目通过 Markdown 文件维护。
 
-> 日常怎么写内容、怎么发布、出问题怎么排查，见操作手册：`D:\ai_coding\博客操作手册.md`（放在项目上一级目录，不在仓库里）。
+> 写作、发布和排查流程见本文；本地私人操作手册放在项目上一级目录，不属于公开仓库。
 
 ## 本地打开
 
@@ -11,8 +11,9 @@
 在项目目录打开终端：
 
 ```powershell
-cd D:\ai_coding\lulu-blog
-npm install
+git clone https://github.com/luWlu/lulu-blog.git
+cd lulu-blog
+npm ci
 npm run dev
 ```
 
@@ -20,11 +21,13 @@ npm run dev
 
 ```powershell
 npm run check
+npm test
 npm run build
+npm run verify:build
 npm run preview
 ```
 
-`check` 检查类型与 Astro 文件，`build` 输出静态网站到 `dist`，`preview` 查看构建后的版本。
+`check` 检查类型与 Astro 文件，`test` 检查 Markdown 统计、编辑注释过滤及部署路径，`build` 输出静态网站到 `dist`，`verify:build` 检查产物中的路径、锚点、元信息和收录范围，`preview` 查看构建后的版本。
 
 ## 目前包含
 
@@ -33,7 +36,7 @@ npm run preview
 - Markdown 文章与项目详情、自动目录、代码高亮。
 - 学习记录分类筛选，分类会同步到地址栏。
 - 本地全文条目搜索：匹配标题、简介与标签。支持 Ctrl / Command + K，也支持按 `/` 打开。
-- 浅色 / 深色模式，自动识别系统偏好并保存手动选择。
+- 浅色 / 深色模式，自动识别系统偏好并保存手动选择；代码块背景和语法高亮跟随主题。
 - 移动端导航与响应式布局。
 - RSS、sitemap、页面元信息与站点图标。
 - GitHub Pages 自动构建与部署配置，兼容项目子路径。
@@ -68,7 +71,7 @@ draft: false
 
 把 `templates/project.md` 复制到 `src/content/projects/`。与笔记的写法相同，另外支持：
 
-- `status`：`计划中` / `进行中` / `已完成`。
+- `status`：`计划中` / `进行中` / `已完成`；未填写时默认为 `计划中`。
 - `accent`：`purple` / `lime` / `orange`，控制卡片配色。
 - `diagram`：`board` / `wave` / `circuit`，控制卡片插画。
 - `repository`：可选，真实项目代码链接。
@@ -82,25 +85,21 @@ draft: false
 
 - `order`：学习路径序号，决定列表排序和卡片上的 `STEP 0x`，接着现有最大值往下排。
 - `stage`：`前置` / `基础` / `进阶`，实验列表页按它分组。
-- `status`：`计划中` / `进行中` / `已完成`。
-- `board`：硬件平台，例如 `"Zynq-7035 核心板 + 自制 AD/DA 底板"`。
+- `status`：`计划中` / `进行中` / `已完成`；未填写时默认为 `计划中`。
+- `board`：硬件平台，默认是本站实际使用的 `"Zynq-7035 核心板 + 自制 AD/DA 底板"`。
 - `tools`：用到的工具与仪器，例如 `["Vivado 2020.2", "示波器"]`。
 - `accent`：`purple` / `lime` / `orange`，控制详情页顶部插画配色。
 - `diagram`：`wave` / `board` / `circuit`，控制详情页顶部插画。
 
 正文推荐结构：这个实验要解决什么 → 硬件连接（接线表）→ 原理与关键代码 → 仿真验证 → 上板步骤 → 踩过的坑 → 下一步。
 
-示意图优先用内联 SVG，颜色写 `currentColor`（深色模式下才看得见）。暂时没有截图的位置用占位块：
+文章以文字、接线表、参数和关键代码说明实验过程。现有内联 SVG 示意图会保留，新增图片完全可选；不使用等待补图的占位块。Markdown 中的 HTML 编辑注释会在构建时移除，真实代码片段中的注释仍保留。
 
-```html
-<div class="shot-placeholder"><strong>截图待补</strong>：这里需要一张 XXX 截图（写清来源）</div>
-```
-
-拿到截图后放进 `src/content/experiments/images/`，再用相对路径引用：`![说明](./images/文件名.png)`。注意**图片必须先存在再引用**，引用了不存在的图片会让构建直接失败（`[ImageNotFound]`）。
+阅读时长按讲解文字每分钟 400 字估算：忽略围栏代码、缩进代码、行内代码、编辑注释和 SVG，保留表格单元格文字以及链接的可见文字。它是篇幅估算，不代表完成实验或阅读代码所需时间。
 
 ## 添加图片
 
-推荐将图片放在文章所在文件夹，并使用相对地址。Astro 会处理 Markdown 中引用的本地图片，并适配部署的路径。
+如需添加已有图片，可将图片放在文章所在文件夹，并使用相对地址。Astro 会处理 Markdown 中引用的本地图片，并适配部署的路径。
 
 ```text
 src/content/notes/
@@ -125,6 +124,8 @@ src/content/notes/
 
 上传真实内容时，使用 `sample: false`。真实内容会优先于示例显示。
 
+收录范围：RSS 和 sitemap 包含已发布的真实笔记、实验和项目；搜索索引包含三类已发布内容及带标记的示例。RSS 按日期发布最近 30 条，草稿在三者中都排除。
+
 ## 修改个人资料和外观
 
 - 网站名称、作者、简介：`src/lib/site.ts`。
@@ -133,7 +134,7 @@ src/content/notes/
 - 实验列表页导语、分组说明与学习路径：`src/pages/experiments/index.astro`。
 - 实验详情页信息栏（平台/状态/工具）：`src/components/ExperimentMeta.astro`。
 - 实验卡片：`src/components/ExperimentCard.astro`；实验相关样式在 `src/styles/global.css` 末尾「实验记录」一段。
-- 配色、字体与布局：`src/styles/global.css`。
+- 配色、字体与文章布局：`src/styles/global.css`；首页布局：`src/styles/home.css`。字体使用系统字体，不请求第三方字体服务。
 - 站点图标：`public/favicon.svg`。
 - 社交分享图：`public/social-card.svg`。SVG 分享图的预览支持取决于目标平台；如需稳定的社交卡片预览，可换成 PNG 并更新 Layout。
 - 导航、页脚与页面元信息：`src/layouts/Layout.astro`。
@@ -154,7 +155,7 @@ src/content/notes/
 
 构建配置会读取 GitHub Actions 提供的仓库名称，自动设置网址与子路径，不需要在代码里填写 GitHub 用户名。
 
-目前只准备了部署文件，尚未连接账号或向 GitHub 发布。
+本站已通过 GitHub Actions 部署到 https://luwlu.github.io/lulu-blog/。推送到 `main` 或 `master` 会触发检查、构建和 Pages 发布。
 
 ### 自定义域名（以后可选）
 
@@ -164,6 +165,8 @@ src/content/notes/
 SITE_URL = https://你的域名
 BASE_PATH = /
 ```
+
+自定义域名只设置 `SITE_URL` 时，默认发布在根路径；显式 `BASE_PATH` 优先。默认 GitHub 项目站仍自动使用仓库子路径。
 
 同时在 GitHub Pages 的 Custom domain 中设置域名，并按 GitHub 的说明配置 DNS。重新运行部署后，canonical、RSS 和 sitemap 会使用新网址。
 

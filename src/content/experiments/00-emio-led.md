@@ -28,8 +28,6 @@ Zynq 和普通单片机的最大区别是：芯片里同时住着**一个 ARM �
 
 本实验的目标就一句话：**PS 端引出 EMIO 接口，在 PS 端编写定时器模块，控制 LED 每秒交替点亮/熄灭**。
 
-<!-- TODO(lulu): 源 README 只给出任务描述和目标现象（1 秒亮 / 1 秒灭），没有记录实测结论或通过状态。上面"验证三件事"是按源文档原理部分归纳的，不是实测结论。如果手上有实测记录（串口输出、板子是否真在闪），请补进这一节。 -->
-
 ## 硬件平台与工具链
 
 ### PS 和 PL 各干什么
@@ -45,8 +43,6 @@ Zynq 和普通单片机的最大区别是：芯片里同时住着**一个 ARM �
 
 也就是说，`xc7z020clg400-1` 是这份文档拿来做**通用示例**的器件，配套的引脚号、电平标准都只是示例值。
 
-<!-- TODO(lulu): 这份 README 通篇按 Zynq-7020（示例器件 xc7z020clg400-1 / xc7z020clg484-1）来写，而本套实验的实际平台是 Zynq-7035 核心板 + 自制底板（其他实验的约束与工程文件里器件统一为 xc7z035ffg676-2）。README 里的 7020 型号、XDC 里的示例球号 Y9、示例电平 LVCMOS33 都属于"照抄会踩坑"的示例。本文按源材料措辞保留其示例身份，未断言本实验用的是 7020；实际器件型号与 PL 侧 LED 的球号请以本板原理图为准。 -->
-
 ### 工具链
 
 | 环节 | 工具 | 产物 |
@@ -56,8 +52,6 @@ Zynq 和普通单片机的最大区别是：芯片里同时住着**一个 ARM �
 | 下载与运行 | Vitis（Program FPGA + Run） | 板上现象 |
 
 源文档的写法是「打开 Vitis（2019.2 及以前是 XSDK，操作类似）」，**没有写死 Vivado / Vitis 的版本号**。
-
-<!-- TODO(lulu): 源 README 未指明本实验使用的 Vivado / Vitis 具体版本（只提到 Vitis 在 2019.2 及以前叫 XSDK）。同目录其他实验写的是 Vivado 2020.2，但那是别的文档，不能替这一篇下结论；确认后请把版本补进 frontmatter 的 tools。 -->
 
 ## MIO 和 EMIO 到底差在哪
 
@@ -173,8 +167,6 @@ PS 端可用的定时器有三种，本任务用第一种就够了：
    - 下方 **GPIO EMIO Width** 填 `1`（控制 1 个 LED）或 `4`（控制 4 个 LED）。本教程用 1。
 4. 如果板上 LED 是 PL 侧的，**不要**去动 MIO 那 54 个引脚的勾选，我们用不到 MIO。
 5. 点 OK。
-
-<div class="shot-placeholder"><strong>截图待补</strong>：这里需要一张 Vivado Block Design 里 `processing_system7_0` 的配置界面截图（来源：Vivado / Peripheral I/O Pins 页），能看清 GPIO 分组下 EMIO 已勾选、GPIO EMIO Width = 1，以及 MIO 那 54 个引脚都没有被勾选。</div>
 
 ### 也可以用 Tcl 一键开 EMIO
 
@@ -305,10 +297,6 @@ set_property IOSTANDARD LVCMOS33               [get_ports {GPIO_0_0[0]}]
 
 如果板上没有 PL 侧 LED，只有一个空闲扩展口，源文档给的做法是：把 LED 正极（长脚）串一个 **330Ω~1kΩ 电阻**接到该 IO，负极接 GND，同样能验证——注意别超过 IO 的驱动电流（约 **8~16mA**）。
 
-<div class="shot-placeholder"><strong>截图待补</strong>：这里需要一张开发板原理图上 PL 侧 LED 网络的截图（来源：本板原理图 / 自制底板或核心板连接器图），能看清 LED 位号、串阻、以及它连到 FPGA 的哪个球号，用来把上面模板里的示例球号替换成本板的真实球号。</div>
-
-<!-- TODO(lulu): 本板（Zynq-7035 核心板 + 自制底板）PL 侧 LED 的真实球号与 IOSTANDARD，源材料里没有给出——README 与 led_emio.xdc 里的 Y9 / W9 / V9 / U9 / LVCMOS33 都被明确标注为"示例，请按你的板子修改"。需要从原理图补出真实球号后填进 XDC，此处不猜。 -->
-
 ## Vitis 侧：PS 端的定时器模块
 
 ### 建 platform 和 application
@@ -422,8 +410,6 @@ xil_printf("SCU timer clk = %d Hz, load = 0x%x\r\n",
            (int)TIMER_FREQ_HZ, (unsigned)TIMER_LOAD_VALUE);
 ```
 
-<!-- TODO(lulu): 上面"装载值怎么算"的表用的是 7020 常见的 666,666,687 Hz。本板是 Zynq-7035 核心板，PS 实际 CPU 频率源材料没有记录；代码里是靠 XPAR 宏在运行时取，所以不影响功能，但如果要在文章里给出确定的秒数换算，需要先确认本板的 PS 时钟配置。 -->
-
 ### 备选方案：软件延时轮询
 
 不用中断、不配任何定时器，代码最短，适合先把 EMIO 通路验通。见 `src/led_poll.c`：
@@ -449,8 +435,6 @@ while (1) {
 | 周期参数 | 宏直接给装载值：`TIMER_LOAD_VALUE (TIMER_FREQ_HZ - 1)` | 毫秒参数化：`PERIOD_MS 1000U` → `TIMER_LOAD_VAL (((TIMER_CLK_HZ / 1000U) * PERIOD_MS) - 1U)` |
 | 轮询版延时 | `sleep(1)` | `HALF_PERIOD_US 1000000U` + `usleep()` |
 | 额外提醒 | —— | 注释里特别写了一句「该引脚确实接 LED（**不是按键**）」 |
-
-<!-- TODO(lulu): 源 README 的文件清单与实际 src/ 目录不一致（少列了 emio_led_1s.c 与 emio_led_poll.c）。本文按目录实况把四份都介绍了，但无法判断哪一份是最终交付版本；请确认后统一文件清单，并决定正文以哪一份为准。 -->
 
 ### 下载运行
 
@@ -491,12 +475,6 @@ while (1) {
 </svg>
 <figcaption>图 2：LED 引脚上的预期波形——中断每 1 秒翻转一次电平，所以亮 1 秒、灭 1 秒，一个完整明暗周期 2 秒。（源文档没有附实测波形，这里画的是设计与装载值推出的预期。）</figcaption>
 </figure>
-
-<div class="shot-placeholder"><strong>截图待补</strong>：这里需要一张开发板照片（来源：本实验上板实拍），能看到 PL 侧那颗 LED 处于点亮状态，并尽量带上板子上的丝印位号，方便读者对照是哪一颗灯。</div>
-
-<div class="shot-placeholder"><strong>截图待补</strong>：这里需要一张 Vitis 串口终端截图（来源：Vitis Serial Terminal 或任意串口工具，115200），能看清程序启动打印的 `SCU timer clk = ... Hz, load = 0x...` 和 `Timer started, LED toggles every 1 second.` 两行输出。</div>
-
-<!-- TODO(lulu): 源材料只有"应该看到什么"的设计目标（README 第 3.4 节：观察 LED 是否 1 秒亮、1 秒灭），没有实测记录、没有串口日志、也没有本实验是否通过。上面两处挂的是截图位；等有实测数据后，把"预期现象"改成实测结论。 -->
 
 ### 一个必须记住的前提
 
@@ -553,8 +531,6 @@ SCU 私有定时器的计数时钟是 **CPU 时钟 / 2**。直接拿 CPU 频率�
 
 **11. 目标引脚上挂的可能不是 LED。**
 `emio_led_1s.c` 的注释里特意写了一条前提：「该引脚确实接 LED（**不是按键**）」。约束到哪个球之前，先在原理图上确认那颗球外面接的是灯，不然你会对一个按键输出电平、然后纳闷灯为什么不亮。
-
-<!-- TODO(lulu): 上面第 11 条来自 src/emio_led_1s.c 的注释（该文件未被 README 的文件清单收录）；如果最终交付版本不是这一份，这条要不要保留请一并决定。 -->
 
 ## 下一步
 

@@ -1,13 +1,18 @@
 import { defineConfig } from 'astro/config';
-
-const [owner, repository] = (process.env.GITHUB_REPOSITORY || '').split('/');
-const site = process.env.SITE_URL || (owner ? `https://${owner}.github.io` : 'http://localhost:4321');
-const base = process.env.BASE_PATH || (repository && !repository.endsWith('.github.io') ? `/${repository}/` : '/');
+import { unified } from '@astrojs/markdown-remark';
+import { resolveSiteConfig } from './scripts/site-config.mjs';
+import stripHtmlComments from './scripts/strip-html-comments.mjs';
 
 export default defineConfig({
-  site,
-  base,
+  ...resolveSiteConfig(),
   output: 'static',
   devToolbar: { enabled: false },
   trailingSlash: 'always',
+  markdown: {
+    processor: unified({ remarkPlugins: [stripHtmlComments] }),
+    shikiConfig: {
+      themes: { light: 'github-light', dark: 'github-dark-default' },
+      defaultColor: false,
+    },
+  },
 });

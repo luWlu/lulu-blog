@@ -57,8 +57,6 @@ set_property SLEW SLOW [get_ports f_oc5]
 
 `create_clock -period 10.000` 就是后面所有频率计算的基准：一个时钟 10 ns、100 MHz。`DRIVE 8` 和 `SLEW SLOW` 是给开集电极这一路降边沿速度用的。
 
-<!-- TODO(lulu): 源目录里只有 pwm_generator_top.xdc 这一份约束（C8 + AC24）。freq_sweep_pwm.v / duty_freq_sweep_pwm.v / breath_pwm.v 三个模块的输出端口都是 f_oc1，源文档没有给出 OC1 这一路的 FPGA 管脚、底板网络或约束写法。上板前需要按底板资料补齐，或把这三个模块的输出改接到已约束的 f_oc5。 -->
-
 ### 输出电路极性：参数写 30%，示波器就该看到 30%
 
 这一条要写在最显眼的位置，因为它是本实验里最容易"看反"的地方。OC5 由 ULN2803 开集电极驱动：
@@ -189,8 +187,6 @@ endmodule
 - **没有复位引脚。** 源文件注释说得很清楚：Xilinx 7 系列 FPGA 支持寄存器上电初值，所以 `pwm_counter` 直接在声明处赋 `{COUNTER_WIDTH{1'b0}}`，不额外占用一个复位脚。
 - **`pwm_level` 挂了 `KEEP` 和 `MARK_DEBUG`。** `KEEP` 防止综合把它优化掉，`MARK_DEBUG` 让它在 Set Up Debug 里可以被加进 ILA；`pwm_counter` 只挂了 `MARK_DEBUG`。
 
-<!-- TODO(lulu): 上面 PERIOD_COUNT / HIGH_COUNT / COUNTER_WIDTH 三个值是按源文件公式对默认参数做的算术核对，不是仿真或实测读数。1 000 / 10 000 / 100 000 三个频点下的 PERIOD_COUNT 分别是 100000 / 10000 / 1000，位宽分别是 17 / 14 / 10；其中 100 kHz 那组的位宽已被仿真产物 pwm_tb.out 里的 COUNTER_WIDTH=10 佐证，其余两组建议补一次综合报告里的寄存器位宽截图再写成结论。 -->
-
 ## 模块二：freq_sweep_pwm.v（频率扫描）
 
 占空比固定约 50%，让**周期值**从 `PERIOD_MAX` 一步一步减到 `PERIOD_MIN`，频率就自动从低到高爬升；爬到顶再跳回起点重新扫。关键在最后那句 `assign f_oc1 = ~(pwm_cnt < (period >> 1));`：比较值不是常量，而是当前周期值的一半，所以周期怎么变，占空比都锁在 50% 附近。
@@ -254,8 +250,6 @@ endmodule
 
 默认参数下：`PERIOD_MAX = CLK_FREQ / F_MIN = 100000`、`PERIOD_MIN = CLK_FREQ / F_MAX = 10000`、`PERIOD_W = $clog2(PERIOD_MAX) = 17`、`TOTAL_STEPS = PERIOD_MAX - PERIOD_MIN = 90000`、`STEP_CLKS = (CLK_FREQ / 1000 * SWEEP_MS) / TOTAL_STEPS = 2222`。
 
-<!-- TODO(lulu): 上面这些值是按源文件公式对默认参数做的算术核对。注意 STEP_CLKS 是整数除法：200000000 / 90000 = 2222.22…，截断为 2222，所以一轮扫描实际是 2222 × 90000 = 199980000 个时钟，比 2000 ms 略短——这个差值源文档没有提，写进正文前需要补依据。另外这个模块只给 period 写了 initial，pwm_cnt / step_cnt 没有初值，上电起始状态源文档没有说明。 -->
-
 扫频方向只有"低 → 高"一种，扫到 `F_MAX` 就跳回 `F_MIN`。源文件注释给了改法：想做成"高 → 低 → 高"的往返扫描，照 `breath_pwm.v` 里 `dir` 标志的写法加一个方向位即可——这句话把两个模块的设计套路串起来了。
 
 ## 模块三：duty_freq_sweep_pwm.v（占空比 + 频率扫描）
@@ -317,8 +311,6 @@ endmodule
 ```
 
 默认参数下：`MODE_CLKS = (CLK_FREQ / 1000) * MODE_MS = 200000000`，`MODE_CNT_W = $clog2(MODE_CLKS) = 28`、`ACC_W = 29`，`PWM_MAX = (1 << PWM_WIDTH) - 1 = 1023`、`DUTY_STEPS = 2 * PWM_MAX = 2046`，`FREQ_STEPS = PERIOD_MAX - PERIOD_MIN = 90000`。
-
-<!-- TODO(lulu): 上面这些值是按源文件表达式对默认参数做的算术核对，不是仿真读数（载波频率 97.656 kHz 出自源文件注释原文）。另外这个模块的 PERIOD_W 用的是带 +1 的那一版 $clog2(PERIOD_MAX + 1)，与 freq_sweep_pwm.v 的 $clog2(PERIOD_MAX) 写法不同：默认参数下位数相同，但 PERIOD_MAX 正好是 2 的幂时两者会差一位。 -->
 
 模块末尾有一个完整的 `initial` 块，把 `mode`、`mode_cnt`、`duty_pwm_cnt`、`duty`、`duty_dir`、`duty_step_acc`、`period`、`freq_pwm_cnt`、`freq_step_acc` 全部初始化。源文件注释同样说明：本模块没有复位端口，使用 `initial` 设置 FPGA 上电初值，Vivado 可综合该写法。
 
@@ -397,8 +389,6 @@ module breath_pwm
 
 源文件注释里那句"远超人眼闪烁感知"解释了为什么载波要走这么快：人眼看到的是 97.66 kHz 方波的平均值，也就是占空比对应的亮度；载波本身快到看不出来，只有占空比的缓慢变化才表现为"呼吸"。
 
-<!-- TODO(lulu): 上面这些值是按源文件公式做的算术核对（200000000 / 2048 = 97656.25，整数除法截断为 97656），不是实测。另外 breath_pwm.v 没有任何 initial 块或声明处初值，pwm_cnt / duty / dir / step_cnt 的上电起始状态源文档没有说明；端口注释写的"1=亮, 0=灭"与 freq_sweep_pwm.v 注释里的"1=灭/低有效"字面相反，assign 里的取反是唯一确定的部分，发布前建议向原作者确认一次有效电平。 -->
-
 ### 四个模块的默认参数一览
 
 | 模块 | 输出端口 | 频率 | 占空比 | 关键参数 |
@@ -451,10 +441,6 @@ PERIOD_COUNT = 100000000 / PWM_FREQ_HZ
 
 若使用 ILA，可观察 `pwm_counter` 和 `pwm_level`。其中 `pwm_level` 表示预期在物理 OC5 上看到的波形。`pwm_counter` 用来核对周期有没有数对（每周期数到 `PERIOD_COUNT - 1`），`pwm_level` 用来直接看"示波器应该看到的那个波形"对不对；因为 `pwm_level` 挂了 `KEEP`，它不会被综合优化掉，Set Up Debug 里能直接加进 ILA。
 
-<div class="shot-placeholder"><strong>截图待补</strong>：这里需要一张 Vivado ILA 波形截图（Hardware Manager 里 ILA 窗口，采样时钟 clk_100m，观察 pwm_counter 与 pwm_level，用来核对一个周期内的计数范围和高电平区间）</div>
-
-<!-- TODO(lulu): README 只说"可观察 pwm_counter 和 pwm_level"，没有写采样深度、触发条件或总线进制；如果要在正文里给出建议值，需要一次实际上板记录。 -->
-
 ## 外部接口接线
 
 本实验不需要信号发生器。OC5 是开集电极输出，**必须给 OC_VCC1 提供上拉电源**，否则 OC5 不能形成正常高电平。
@@ -471,8 +457,6 @@ PERIOD_COUNT = 100000000 / PWM_FREQ_HZ
 也可以按原实验1方案使用 5 V 上拉，但第一次测试推荐 3.3 V。不要把电源正负极接反，也不要把示波器地夹接到 OC5：不给上拉，开集电极只有"拉低"能力，量不到正常高电平；电源接反会直接顶到板上器件；地夹接到 OC5 等于把输出短到地。
 
 上拉电压还决定了输出高电平的幅度：`OC_VCC1` 给多少伏，物理 OC5 的高电平就接近多少伏。所以下面的验证条目里写的是"高电平接近 OC_VCC1"，而不是写死某个电压值。
-
-<div class="shot-placeholder"><strong>截图待补</strong>：这里需要一张 SCSI1 接线实物照片（外面接 3.3 V 上拉电源到 Pin 17、探头尖端接 Pin 22 OC5、地夹与电源地接 Pin 29 GND），并标出 pin 1 方向，用来对应"接线前必须确认 pin 1 方向"这句提醒</div>
 
 ## 示波器验证要点
 
@@ -500,10 +484,6 @@ PERIOD_COUNT = 100000000 / PWM_FREQ_HZ
 ```
 
 第 4 步是这几组里最"紧"的：周期只有 10 us。源文档对高频下的现象说得很明确——由于 ULN2803、上拉电阻、负载电容和示波器探头会影响上升/下降时间，高频时边沿会比 RTL 仿真更缓慢，占空比也可能出现小幅偏差。所以前几步对不上，先怀疑接线、上拉电源和参数；第 4 步的偏差先看边沿是不是已经被拖成梯形，再决定要不要动 RTL。
-
-<!-- TODO(lulu): README 第 7 节只写了"示波器应测得"的期望值，没有任何实测读数。另外 README 第 4 节的"示例"表里还有一组 100 kHz、75%，它和第 7 节的四条测试顺序不是同一份清单，不要混用。 -->
-
-<div class="shot-placeholder"><strong>截图待补</strong>：这里需要一张示波器测到的 PWM 占空比截图（探头尖端 SCSI1-22 OC5、地夹 SCSI1-29 GND，建议先补"1 kHz、50%"这一步），从屏幕上读出频率、高电平占空比，并确认低电平接近 0 V、高电平接近 OC_VCC1。如有可能再补一张 100 kHz 下边沿变缓的截图，用来对照"高频时边沿会比 RTL 仿真更缓慢"这句结论</div>
 
 ## 仿真结果
 
@@ -551,8 +531,6 @@ P_... .param/l "COUNTER_WIDTH" 1 4 30, +C4<00000000000000000000000000001010>;   
 
 这几行参数常量本身就是一次核对：`PERIOD_COUNT = 1000`、`HIGH_COUNT = 300`、`COUNTER_WIDTH = 10`，正好等于 `100 MHz / 100 kHz`、30% × 1000 和 `$clog2(1000)`。**但这些只是编译进产物的常量，不等于仿真真的跑出了 PASS。** README 第 8 节的结论是"已使用 Icarus Verilog 编译运行并通过检查"。
 
-<!-- TODO(lulu): 仓库里没有 iverilog / vvp 运行时的完整终端输出，只有 .out 编译产物。要贴"运行结果"，请把实际运行的那两行 PASS: PWM frequency=100 kHz, duty=30% 和 PASS: period=... ns, high width=... ns 补进来替换这一段。 -->
-
 ## 踩过的坑
 
 **1. 极性反相一次，但只在管脚上反。**
@@ -597,4 +575,3 @@ OC5 是开集电极：FPGA 侧只能把线拉低，"高"必须靠外部上拉产
 - 给 `f_oc1` 这一路补约束（管脚 + IOSTANDARD + DRIVE/SLEW），或者把三个扫描模块的输出统一改到已约束的 `f_oc5`，否则后三种玩法只能靠默认管脚上板。
 - 把 `freq_sweep_pwm.v` 里 `STEP_CLKS` 的整数截断换成 `duty_freq_sweep_pwm.v` 那个累加器写法，让两个模块的扫描时长口径一致。
 - 给 `breath_pwm.v` 补一个 `initial` 块（或声明处初值），把上电起点从"器件默认值"变成"代码里写明的东西"。
-- 补上示波器实测截图与读数（把"示波器验证要点"里的期望值换成实测值，再补一张 100 kHz 下边沿变缓的截图），并把 `iverilog` / `vvp` 运行时的完整终端输出保存下来，替换目前只能佐证编译常量的 `pwm_tb.out` 片段。

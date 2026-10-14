@@ -27,7 +27,7 @@ sample: false
 3. 掌握 DDS 思想：把正弦、方波、三角波变成数据序列，按更新节拍送 DA 还原波形，用示波器采集并记录频率 / 幅度 / 形状。
 
 **器材**：Zynq-7035 开发板（MZ7XCORE676B 核心板 + SOC 多功能底板）、示波器、万用表（可选）、USB 下载线。
-**工具**：Vivado 2020.2、Icarus Verilog（`C:\iverilog\bin`）、Node.js（重新生成正弦表用）。
+**工具**：Vivado 2020.2、Icarus Verilog（`iverilog / vvp 已加入 PATH`）、Node.js（重新生成正弦表用）。
 
 这是一个**纯 PL 工程**（无 PS 参与）。这点值得先说明：整条数据通路、节拍发生、波形计算、串行帧控制全部用 Verilog 写在 PL 里，不跑 ARM、不写 SDK 程序。参数调节靠 Vivado 的 **VIO（Virtual I/O）**在 Hardware Manager 里在线改，改完立即生效，**不需要重新综合**。
 
@@ -38,10 +38,8 @@ sample: false
 | 代码 | 5 个 RTL 模块 + XDC（本目录已备好，要求能讲解） |
 | 仿真 | 3 个测试平台全部 PASS（含 DAC8871 行为模型的时序检查） |
 | 上板 | 固定电压 7 个点实测 + 三种波形示波器采集 |
-| 记录 | 填写 `docs/measure_template.md`（含截图） |
+| 记录 | `docs/measure_template.md` 中的测量维度 |
 | 报告 | 见后文「报告要点」章节 |
-
-<!-- TODO(lulu): 补一张核心板 + AD/DA 底板与 SCSI2 端子的实物照片 -->
 
 ## 最终能输出什么波形
 
@@ -135,7 +133,7 @@ VIO 虚拟输入(Hardware Manager)                     SCSI2 端子（底板）
 ```text
 Vout = VREFL + (VREFH − VREFL) × code/65536 = −15V + 30V × code/65536
 1 LSB = 30000mV/65536 ≈ 0.4578 mV
-中码 0x8000(32768) → 0V；0xFFFF → +14.9998V；0x0000 → −15V
+中码 0x8000(32768) → 0V；0xFFFF → +14.9995V；0x0000 → −15V
 ```
 
 常用电压速查（VIO 里 `dc_mv` 直接填 mV，RTL 自动换算码值；此表用于核对 `code_now`）：
@@ -151,8 +149,6 @@ Vout = VREFL + (VREFH − VREFL) × code/65536 = −15V + 30V × code/65536
 | −15 V | −15000 | 0x0000 / 0 | −15.0000 V |
 
 > RTL 换算：`code = 32768 + ((dc_mv × 143165) >>> 16)`，其中 143165/65536 ≈ 65536/30000（mV→LSB）。±1 LSB 的不对称（如 +4.9997 / −5.0002）来自 floor 取整方向：正侧丢掉小数、负侧多扣一位，恰好差约 1 LSB，**正常现象，不是 bug**。
-
-<!-- TODO(lulu): 源文档对满码理论值有两种写法——速查表/期望值汇总为 +14.9995V，换算正文与讲义 01 为 +14.9998V。按 30V×65535/65536 = 14.99954V 推算是 +14.9995V，此处两处均按原文保留，请确认统一口径 -->
 
 ### DAC8871 串行时序（RTL 的依据）
 
@@ -818,7 +814,8 @@ experiment5_da_output/
 一键仿真（**全部 PASS 才继续上板**）：
 
 ```powershell
-cd D:\A_DSH\experiment_projects\experiment5_da_output\sim
+# 从模拟量输出工程根目录运行
+cd sim
 .\run_sim.ps1              # 或 .\run_sim.ps1 -Only tb_wave_gen 只跑单个
 ```
 
@@ -835,9 +832,9 @@ cd D:\A_DSH\experiment_projects\experiment5_da_output\sim
 ### 命令行（推荐，约 10~15 分钟）
 
 ```powershell
-cd D:\A_DSH\experiment_projects\experiment5_da_output
-D:\Xilinx\Vivado\2020.2\bin\vivado.bat -mode batch -source scripts\create_project.tcl
-D:\Xilinx\Vivado\2020.2\bin\vivado.bat -mode batch -source scripts\build_bitstream.tcl
+# 从模拟量输出工程根目录运行
+vivado -mode batch -source scripts\create_project.tcl
+vivado -mode batch -source scripts\build_bitstream.tcl
 ```
 
 生成 `vivado\da_output.runs\impl_1\da_output_top.bit`；构建日志报告在 `vivado\timing_summary.rpt / drc.rpt / util.rpt / io.rpt`（要求 **timing 0 违例、DRC 0 error**）。
@@ -869,24 +866,20 @@ D:\Xilinx\Vivado\2020.2\bin\vivado.bat -mode batch -source scripts\build_bitstre
 > VIO 改值方法：在值上双击输入新值（freq_hz 选十进制显示更方便），回车立即生效。
 > mode 变化时 LED2 会以不同频率闪烁（DC 灭 / 正弦 0.75Hz / 方波 1.5Hz / 三角 3Hz）。
 
-<div class="shot-placeholder"><strong>截图待补</strong>：需要一张 Vivado Hardware Manager 中 VIO 窗口的截图（来源：本实验上板时自行截取，需同时显示 probe_out0~3 与 probe_in0 / code_now）</div>
-
 ## 期望值汇总（实测对照）
 
-下表理论值均已由仿真验证。**"实测值"一栏上板后填写**，没有实测数据前一律留空。
+下表列出理论与仿真参考值。本文未记录对应的上板实测读数，不能将这些数值视为实际输出结果。
 
 | 项目 | 理论值（仿真已验证） | 实测值 |
 |---|---|---|
-| 上电默认输出 | +5.000 V（若 VIO 初始值未生效则为 0V——两种都正常，进 VIO 设置即可） | 待填 |
-| DC 七点 | 见前文码值速查表（±1 LSB ≈ ±0.5 mV 取整不对称） | 待填 |
-| 正弦/方波/三角 Vpp | 20.0 V（amp=10000 时） | 待填 |
-| 三角波峰峰值 | 比正弦/方波小 20 LSB ≈ 9 mV（折叠式三角原始幅度 ±32752、正弦/方波 ±32767，经 K=21845 缩放后每边差 10） | 待填 |
-| 周期 | 1 kHz → 1.000 ms（±8 ppm） | 待填 |
-| 方波占空比 | 精确 50% | 待填 |
-| DAC 更新率 | 100 kSPS（台阶间隔 10 µs） | 待填 |
-| 满码 ±15V | 理论 +14.9995/−15.0000 V；**实际可能削顶**（见下文 6.4） | 待填 |
-
-<div class="shot-placeholder"><strong>截图待补</strong>：需要示波器上 1 kHz 正弦（含 µs 级台阶放大图）与方波、三角波各一张截图（来源：本实验上板采集时自行截取）</div>
+| 上电默认输出 | +5.000 V（若 VIO 初始值未生效则为 0V——两种都正常，进 VIO 设置即可） | 未记录 |
+| DC 七点 | 见前文码值速查表（±1 LSB ≈ ±0.5 mV 取整不对称） | 未记录 |
+| 正弦/方波/三角 Vpp | 20.0 V（amp=10000 时） | 未记录 |
+| 三角波峰峰值 | 比正弦/方波小 20 LSB ≈ 9 mV（折叠式三角原始幅度 ±32752、正弦/方波 ±32767，经 K=21845 缩放后每边差 10） | 未记录 |
+| 周期 | 1 kHz → 1.000 ms（±8 ppm） | 未记录 |
+| 方波占空比 | 精确 50% | 未记录 |
+| DAC 更新率 | 100 kSPS（台阶间隔 10 µs） | 未记录 |
+| 满码 ±15V | 理论 +14.9995/−15.0000 V；**实际可能削顶**（见下文 6.4） | 未记录 |
 
 ## 常见问题排查
 
@@ -920,7 +913,7 @@ C8 的 SSTL135 改成 LVCMOS33（见 constraints 注释），其余不用动。
 2. **时序设计**：SDI 为何在 SCK 下降沿换数？CS 上升沿起了什么作用（LDAC_N=0）？SCK 为什么只跑 12.5 MHz（隔离器延时）？
 3. **RTL 结构**：帧状态机图（IDLE→LEAD→SHIFT→LAG）、相位累加器、三种波形的数据来源差异、幅度归一化的乘法通路；
 4. **仿真证据**：三个 TB 的 PASS 输出（尤其时序 0 违例、逐点对比）；
-5. **实测数据**：测量表 1~4 全部 + 截图；
+5. **实测数据**：测量条件与读数；未提供的结果应与理论参考明确区分；
 6. **误差分析**：满量程削顶、±1 LSB 取整不对称、隔离电源波动、示波器精度；
 7. **思考题**（任选二）：
    - 想把输出频率提高到 100 kHz 需要改什么？瓶颈依次是什么（SPI 帧长 1.36 µs、DAC 建立时间 ~1 µs、每周期点数）？
@@ -983,13 +976,11 @@ node scripts/gen_sine_lut.js
 
 表项的精度也值得算一笔：相位截断（floor 取地址）误差最多 1 个表项 = 2π/4096 rad，在最陡处折成幅度误差 ≤ 32767×2π/4096 ≈ **50 LSB ≈ 23 mV（−56 dB 最坏瞬时）**——远小于隔离电源本身的噪声，所以 4096 点 / 16 位的组合是够用的。
 
-## 测量记录表（上板后填写）
+## 测量维度与理论参考
 
-下面的表格与 `docs/measure_template.md` 一一对应，**实测栏一律留空待填**。
+下面的表格列出 `docs/measure_template.md` 中的测量维度，空白实测栏表示本文没有对应数据。
 
-> 使用方法：下载 bit 后按本文「上板操作」一章操作 VIO，每完成一项把实测值填进表格。
 > 示波器设置提醒：探头衰减挡与示波器探头设置一致（×1/×10）；垂直档位先用 ±15V 量程（输出最高可达 ±15V），再逐档放大读数；用「测量」功能读 Vpp/周期。
-> 建议每张截图把 VIO 窗口（显示当前参数）一起截进照片，方便报告引用。
 
 ### 表 0：实验条件
 
@@ -1079,20 +1070,6 @@ VIO：`mode=3`，`freq_hz=1000`，`amp_mv=10000`。
 | DAC 更新间隔 | 10 µs | |
 | 对应更新率 | 100 kSPS | |
 
-### 截图清单
-
-建议保存到 `docs/screenshots/`，命名如下：
-
-| 文件名 | 内容 |
-|---|---|
-| dc_5v.png | mode=0, dc_mv=+5000 的直流线 |
-| dc_p15v.png | mode=0, dc_mv=+15000（削顶观察） |
-| sine_1k.png | mode=1 正弦全景（含 VIO 窗口） |
-| sine_stair.png | 正弦放大后的 10 µs 台阶 |
-| square_1k.png | mode=2 方波全景 |
-| tri_1k.png | mode=3 三角波全景 |
-| vio_window.png | VIO 参数设置窗口示例 |
-
 ### 结果讨论要点（写报告时用）
 
 1. 实测电压与理论值的偏差来源：隔离电源 ISO±15V 的实际值（可用万用表在 +OUT1 与 −OUT1 间测满码输出反推）、DAC 满量程误差、示波器精度；
@@ -1121,7 +1098,7 @@ DAC8871 VOUT ──► OPA207 跟随器（R10=6.2k 在反馈路径）──► +
 VOUT = VREFL + (VREFH − VREFL) × Code / 65536     （DAC8871 手册公式 1）
 ```
 
-本板 VREFH/VREFL = 隔离电源 ISO±15V：0x0000 → **−15.0000 V**，0x8000 → **0.0000 V**，0xFFFF → **+14.9998 V**；**1 LSB = 30000 mV/65536 = 0.4578 mV**（手册 ±10V 量程举例为 305 µV，同比例）；例 0x9FFF（40959）→ **+3.7504 V**。满码 0xFFFF 到不了 +15V：台阶共 65536 个间隔，最大码只走完 65535/65536。
+本板 VREFH/VREFL = 隔离电源 ISO±15V：0x0000 → **−15.0000 V**，0x8000 → **0.0000 V**，0xFFFF → **+14.9995 V**；**1 LSB = 30000 mV/65536 = 0.4578 mV**（手册 ±10V 量程举例为 305 µV，同比例）；例 0x9FFF（40959）→ **+3.7504 V**。满码 0xFFFF 到不了 +15V：台阶共 65536 个间隔，最大码只走完 65535/65536。
 
 DAC8871 的码值是**偏移二进制**（0 在中码 0x8000），experiment4 里 LTC2328 输出的是**二补码**（0 在 0x0000）：最负 0x0000 / 0x8000，零点 0x8000 / 0x0000，最正 0xFFFF / 0x7FFF。换算只需**取反最高位**：`偏移二进制 = 二补码 ^ 0x8000`；DAC 天生偏移二进制，因为 R-2R 本质是"无符号比例分配器"，0V 自然落在中码。
 
@@ -1311,5 +1288,3 @@ wire signed [15:0] w_tri = ($signed({1'b0, tri_pos, 4'b0}) - 16'sd16376) <<< 1;
 - 换成**独立精密基准**，把有效分辨率从 10~12 位往 16 位推；
 - 把 `sine_lut` 换成双口 RAM + VIO 写端口，升级成**任意波形发生器**（DDS 部分一行都不用改）；
 - 把 LDAC_N 从接地改成 FPGA 控制，做**双通道同步输出**。
-
-<!-- TODO(lulu): 上板实测完成后，把表 1~表 5 的实测值、误差分析与示波器截图补进本文 -->

@@ -20,8 +20,6 @@ sample: false
 
 这个实验的定位是「前置」：不涉及 PS、不涉及 Block Design、不涉及 Vitis，整条链路是纯粹的 PL 输出。目标也很简单——**四只继电器 H1~H4 每 3 秒同时翻转一次状态**，用来一次性验证 `PL 逻辑 → ULN2003 → 继电器` 这条输出链路。
 
-<!-- TODO(lulu): 源文档没有说明本实验最终的通过/失败结论、也没有记录四只继电器是否都正常动作（relay_multimeter_test.md 只给的是"假定不响时"的排查方法）。这里只写了目标，没有替源材料下结论。如果你手上已有实测结论，补在这一段。 -->
-
 ## 为什么要继电器，以及这条链路上有什么
 
 先说清楚链路，后面所有现象都挂在它上面：
@@ -42,7 +40,7 @@ FPGA 球 ──> 底板连接器 ──> ULN2003 输入 ──> ULN2003 输出 �
 ## 硬件连接与引脚分配
 
 本实验用到 6 个球号，全部对照 Vivado 2020.2 器件库
-`D:\Xilinx\Vivado\2020.2\data\ip\xilinx\mig_7series_v4_2\data\fpga_tlib\zynq\7z\xc7z035ffg676_pkg.xml`
+`<Vivado 安装目录>/data/ip/xilinx/mig_7series_v4_2/data/fpga_tlib/zynq/7z/xc7z035ffg676_pkg.xml`
 逐条核验过（球号 ↔ 网络名 ↔ Bank 全部一致），不是推测值。
 
 | 功能 | 网络名 | 球号 | Bank | Bank 类型 | IOSTANDARD | 备注 |
@@ -70,10 +68,6 @@ FPGA 球 ──> 底板连接器 ──> ULN2003 输入 ──> ULN2003 输出 �
 - 继电器：**HFD4/5**（5V 信号继电器）× 4，位号 H1~H4，各自独立器件
 - 驱动：**ULN2003**（位号 UL3）；线圈供电 VCC5V，单只约 28 mA @5V，四只同时吸合约 110 mA
 - 触点侧：`R_COM1~4` / `R_NO1~4` 引出；**NC 触点疑似悬空**，待 PCB 版图核实
-
-<div class="shot-placeholder"><strong>截图待补</strong>：这里需要一张底板接线照片（来源：继电器模块接线照片），能看清 UL3 的 pin1~pin4 输入侧、pin10 的 COM 接 VCC5V、pin9 接地，以及 H1~H4 线圈的 pin1/pin8。</div>
-
-<div class="shot-placeholder"><strong>截图待补</strong>：这里需要一张万用表测 H1 线圈电阻的读数照片（来源：万用表实测），正常应在 150~200 Ω 区间。</div>
 
 ## 信号链框图
 
@@ -142,8 +136,6 @@ FPGA 球 ──> 底板连接器 ──> ULN2003 输入 ──> ULN2003 输出 �
 
 1. **FPGA 输出 1 = 继电器吸合。** 源文档反复强调的极性就是这个：`relay_state = 1'b1` 时四只继电器同时吸合，不是释放。
 2. **ULN 输出脚的对地电压与直觉相反——吸合时电压低，释放时电压高。** 吸合时输出被拉到地（达林顿管有饱和压降，实际是约 0.9~1.2V，不是严格 0V，**别误判成"没导通"**）；释放时输出脚被线圈"提"到约 5V。
-
-<!-- TODO(lulu): 早期版本的文档把这里写成"0V ←→ 5V"，容易让人以为恒 5V 是正常的，从而把"通道坏了"误判成"电路正常"。relay_multimeter_test.md 明确说以该文件的极性说明（约 1V ←→ 约 5V）为准。 -->
 
 ### 安全默认态
 
@@ -259,9 +251,7 @@ endmodule
 >
 > 注意源文档之间有一处遗留矛盾：`relay_pinmap.md` 第一节的标题写「已移除：按键 K1」，但它后面又有一张标题为「备用：其余 3 路继电器（本实验**不使用**）」的表，把 H2/H3/H4 **又列成了不使用**。这与当前代码（4 路全部驱动）和 XDC（AC11/AB12/AD15/AD16 全部约束）冲突。
 >
-> <!-- TODO(lulu): 上面这处 H2~H4「不使用」的表述与现版本代码/XDC 矛盾，本次按「4 路全部启用」写；请确认 pinmap 那一段是否属于未清理干净的旧版本残留。 -->
-
-## 约束文件
+> ## 约束文件
 
 `relay_top.xdc` 全文：
 
@@ -272,7 +262,7 @@ endmodule
 # 功能：不使用按键，H1~H4 每 3 秒同时翻转一次状态
 #
 # 球号来源：Vivado 2020.2 器件库
-#   D:\Xilinx\Vivado\2020.2\data\ip\xilinx\mig_7series_v4_2\
+#   <Vivado 安装目录>/data/ip/xilinx/mig_7series_v4_2/
 #       data\fpga_tlib\zynq\7z\xc7z035ffg676_pkg.xml
 # =============================================================================
 
@@ -325,8 +315,7 @@ set_property -dict {PACKAGE_PIN V18 IOSTANDARD LVCMOS33} [get_ports led_heart]
 
 1. **时钟约束**：`create_clock -period 10.000` 对应 100 MHz，源文档记为「正确」。
 2. **文件里的注释是错的**：XDC 里写「心跳灯 约 0.37 Hz：亮 1.34s / 灭 1.34s」。这个数是**算错了**——忘了 `heart[26]` 一翻转只是半个周期。实际是每 **0.67 秒**翻转一次、约 **0.75 Hz**。以 workflow 文档的更正为准。
-   <!-- TODO(lulu): relay_top.xdc 第 40 行的 0.37 Hz 注释与 relay_workflow.md 的更正（0.67s 一翻转 / 约 0.75 Hz）矛盾，属于源文件内部的旧注释。本次只更正正文说明，未改动该行原文以保持代码块与源文件一致。 -->
-3. **最后两行是注释掉的**：把 NSTD-1 / UCIO-1 从 Error 降为 Warning 是调试期的临时手段，定稿后应还原。
+   3. **最后两行是注释掉的**：把 NSTD-1 / UCIO-1 从 Error 降为 Warning 是调试期的临时手段，定稿后应还原。
 
 约束检查清单（别直接跑综合）：
 
@@ -382,10 +371,9 @@ foreach part {xc7z035ffg676-2 xc7z035ffg900-2 xc7z035fbg676-2} {
 
 这个脚本解决的是一个具体的分流问题：**「继电器没反应」时，先把「设计/约束有问题」和「板上硬件有问题」分开。** 它会真的跑一遍综合 + 实现 + 生成比特流，并打印引脚、时钟、时序余量、以及 NSTD-1 / UCIO-1 这类"端口未约束"DRC。
 
-跑法：
+从继电器工程根目录运行（Vivado 命令已加入 PATH）：
 
 ```text
-cd /d D:\A_DSH\relay
 vivado -mode batch -source relay_selfcheck.tcl
 ```
 
@@ -400,7 +388,7 @@ vivado -mode batch -source relay_selfcheck.tcl
 #       时序余量、以及 NSTD-1 / UCIO-1 这类"端口未约束"DRC。
 #
 # 运行：
-#   cd /d D:\A_DSH\relay
+#   在继电器工程根目录运行，Vivado 命令已加入 PATH
 #   vivado -mode batch -source relay_selfcheck.tcl
 #
 # 结果判读：
@@ -518,8 +506,6 @@ puts "  文件大小: [file size $bitfile] 字节"
 - 如果触点接了负载，**先断开**再测
 - 表笔不要同时碰 GND 和 VCC5V，避免短路
 - 测电阻（线圈）时**必须断电**再测
-
-<div class="shot-placeholder"><strong>截图待补</strong>：这里需要一张万用表直流电压档测 B23 控制信号的照片（来源：万用表实测），读数应在 0V ←→ 3.3V 之间每 3 秒切换。</div>
 
 ### 断电测（先做，最容易发现问题）
 

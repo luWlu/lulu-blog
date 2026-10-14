@@ -4,7 +4,7 @@ description: "用一句话说清这个实验做了什么、验证了什么，40~
 date: 2026-10-20
 order: 7
 stage: "基础"
-status: "已完成"
+status: "计划中"
 board: "Zynq-7035 核心板 + 自制 AD/DA 底板"
 tools: ["Vivado 2020.2", "示波器"]
 tags: ["Zynq", "关键词一", "关键词二"]
@@ -15,7 +15,7 @@ sample: false
 ---
 
 <!--
-使用说明（这个注释块发布前删掉）：
+使用说明（构建时自动移除，不显示在文章中）：
 1. 把本文件复制到 src/content/experiments/ 下，文件名用小写英文 + 连字符，例如 07-uart-loopback.md
    文件名（不含 .md）就是网址：/experiments/07-uart-loopback/
 2. order 决定「学习路径」里的 STEP 编号和排序，接着现有的往下排即可。
@@ -38,7 +38,7 @@ sample: false
 
 ## 原理
 
-把推导过程写下来。需要画图时用内联 SVG（颜色用 currentColor，深色模式才不会看不见）：
+把推导过程写下来。下面的内联示意图可按内容调整；文字、接线表和参数也可以独立说明原理：
 
 <figure class="diagram"><svg viewBox="0 0 720 240" role="img" aria-label="信号链框图"><rect x="40" y="90" width="140" height="60" rx="8" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="2"/><text x="66" y="126" fill="currentColor" font-size="13" font-family="monospace">FPGA</text><path d="M180 120h120" stroke="currentColor" stroke-width="3"/><rect x="300" y="90" width="140" height="60" rx="8" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="2"/><text x="330" y="126" fill="currentColor" font-size="13" font-family="monospace">外部器件</text></svg><figcaption>图 1：信号链示意</figcaption></figure>
 

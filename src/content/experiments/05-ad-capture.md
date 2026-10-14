@@ -41,9 +41,7 @@ sample: false
 | 校准 | 校准数据表 + 拟合系数（a、b、R²）+ 校准前后误差对比 |
 | 报告 | 见文末「实验报告要点」一章 |
 
-实验器材：Zynq-7035 开发板（MZ7XCORE676B 核心板 + SOC 多功能底板）、信号发生器、示波器、万用表、USB 下载线；工具是 Vivado 2020.2、Icarus Verilog（`C:\iverilog\bin`）和 Node.js（跑校准脚本）。
-
-<div class="shot-placeholder"><strong>截图待补</strong>：需要一张实验台全景照片（来源：自己拍摄，含 Zynq-7035 开发板、信号发生器、示波器、万用表与 SCSI2 接线）</div>
+实验器材：Zynq-7035 开发板（MZ7XCORE676B 核心板 + SOC 多功能底板）、信号发生器、示波器、万用表、USB 下载线；工具是 Vivado 2020.2、Icarus Verilog（`iverilog / vvp 已加入 PATH`）和 Node.js（跑校准脚本）。
 
 ## 硬件原理：先看懂信号链
 
@@ -131,8 +129,6 @@ V(输入端)[mV] = code × 0.3125 × (23/3) = code × 115/48 ≈ code × 2.3958 
 
 这三个式子是整篇文章的骨架。后面 `code_to_mv.v` 里除的那个常数 12288，就是从这里来的。举例：ILA 读到 `code = 16000` ⇒ `V = 16000 × 115/48 = 38333 mV ≈ 38.33 V`。
 
-<div class="shot-placeholder"><strong>截图待补</strong>：需要一张底板 `ad&da.SchDoc` 中衰减网络 + AD8421 + LTC2328-16 部分的原理图截图（来源：Altium 打开底板工程后截图）</div>
-
 ### LTC2328-16 的接口时序
 
 RTL 里所有计数器的取值，依据都是这张表：
@@ -197,8 +193,6 @@ SDO   ──────X D15 X D14 X D13 ... X D0 ──
 
 源文件里还记了一条本模块没用到、写时序时必须知道的约束：**`tQUIET ≥ 20 ns`——CNV 上升沿之后 SCK 必须保持安静**。`S_WAIT` 的 600 ns 空档同时满足了 tCONV 和 tQUIET。
 
-<div class="shot-placeholder"><strong>截图待补</strong>：需要一张 LTC2328-16 数据手册 Serial Interface Timing 图（来源：LTC2328-16 datasheet，标出 tCNVH / tCONV / tSCK / tDSDO）</div>
-
 ### 接线表
 
 模拟端子在 26 针连接器 **SCSI2** 上（详见 `docs/pinmap.md`）：
@@ -221,8 +215,6 @@ SDO   ──────X D15 X D14 X D13 ... X D0 ──
 - 不要把市电、电机驱动等大功率信号直接接入；
 - 带电插拔前先把信号发生器输出关掉。
 
-<div class="shot-placeholder"><strong>截图待补</strong>：需要一张 SCSI2 连接器引脚位置特写照片（来源：自己拍摄，标出 24/25 与 11/12 脚，或截取 `docs/pinmap.md` 中的连接器示意图）</div>
-
 ## 工程文件与一键仿真
 
 ```text
@@ -239,7 +231,8 @@ experiment4_ad_capture/
 运行全部仿真（PowerShell）：
 
 ```powershell
-cd D:\A_DSH\experiment_projects\experiment4_ad_capture\sim
+# 从模拟量采集工程根目录运行
+cd sim
 .\run_sim.ps1                 # 全部
 .\run_sim.ps1 -Only tb_sliding_avg   # 只跑一个
 ```
@@ -441,8 +434,6 @@ generate_target all [get_ips ila_adc_step1]
 | 采样周期 | 10000 ns | PASS |
 
 **看波形**：用 GTKWave 打开 `sim/work/tb_ltc2328_master.vcd`，观察 `adc_cnv / adc_sck / adc_sdo` 的相对位置：CNV 脉冲 → 600 ns 空档 → 16 个 SCK；SDO 位的跳变发生在 SCK 上升沿之后（模型里 `TDO_NS=5`）。
-
-<div class="shot-placeholder"><strong>截图待补</strong>：需要一张 GTKWave 波形截图（来源：打开 `sim/work/tb_ltc2328_master.vcd`，显示 adc_cnv / adc_sck / adc_sdo 与 code 的对应关系）</div>
 
 **动手练习**：把 `SCK_DIV` 从 8 改成 2（50 MHz），重跑仿真——仿真会通过，但上板很可能出错（隔离器往返延时），想一想为什么"仿真能过、板上不行"；再把 `CONV_WAIT_CYC` 改成 20（200 ns < 527 ns），这时仿真就该报错了。
 
@@ -730,8 +721,6 @@ PASS: 滑窗滤波有效，均值 = 38332 mV
 
 这段输出把"滤波确实有效"变成了可核对的数据：原始波动 8 LSB，滤波后电压波动只有 5 mV。
 
-<div class="shot-placeholder"><strong>截图待补</strong>：需要一张 `tb_ad_capture_top` 仿真日志截图（来源：Vivado 仿真或 `.\run_sim.ps1 -Only tb_ad_capture_top` 的终端输出，包含噪声测试与 PASS 行）</div>
-
 ## 阶段三：上板联调
 
 仿真全过只说明逻辑自洽，接下来要在真板子上把链路跑通。
@@ -754,12 +743,10 @@ PASS: 滑窗滤波有效，均值 = 38332 mV
 也可先用预检脚本验证约束合法性（约 2~3 分钟）：
 
 ```powershell
-D:\Xilinx\Vivado\2020.2\bin\vivado.bat -mode batch -source sim\preflight.tcl
+vivado -mode batch -source sim\preflight.tcl
 ```
 
 看到 `PREFLIGHT DONE` 且 `sim/work/drc.rpt` 无 Critical Warning 即可放心上板。预检在本机的实测结果：**DRC 0 error、布线 0 failed nets、时序收敛（WNS ≈ +1.5 ns，100 MHz）**。报告里出现下列 4 条 Warning 属正常现象，可忽略：`DPIP-1 / DPOP-2`（DSP 未加流水的建议）、`RTSTAT-10`（仅被 ILA 使用的调试网暂无负载，加入 ILA 后消失）、`ZPS7-1`（Zynq 纯 PL 设计未实例化 PS7 的提示）。
-
-<div class="shot-placeholder"><strong>截图待补</strong>：需要一张 Set Up Debug 中加入 mark_debug 信号后的列表截图（来源：Vivado 2020.2 Tools → Set Up Debug 向导界面）</div>
 
 ### 上电检查（先别接信号）
 
@@ -792,8 +779,6 @@ D:\Xilinx\Vivado\2020.2\bin\vivado.bat -mode batch -source sim\preflight.tcl
 | DC +5V 上叠加 50 mVpp、1 kHz 正弦 | 读数在 ±10 mV 内抖动（滤波把纹波压掉了） |
 | 1 Hz、0→5V 方波 | 读数约 160 µs（N=16 @100kSPS）后跟随到位，滤波边缘有小台阶 |
 | DC −5V | 读数为负，LED2 灭 |
-
-<div class="shot-placeholder"><strong>截图待补</strong>：需要一张 ILA 抓到的波形截图（来源：Vivado Hardware Manager ILA 窗口，含 code1 / avg1 / mv1_cal 及 code1_valid 触发位置）</div>
 
 ## 阶段四：最小二乘校准
 
@@ -892,8 +877,6 @@ function fit(pts) {
 3. 换几个没参与拟合的点复测，记录残差，画"校准前/后误差对比"曲线；
 4. 报告里给出：a、b、R²、最大残差、复测最大误差。
 
-<div class="shot-placeholder"><strong>截图待补</strong>：需要一张 `node scripts\lsq_calib.js` 的运行输出截图（来源：PowerShell 终端，含两个通道的 a/b/R²/K/B/D 与"已生成"提示）</div>
-
 ### 误差分析（报告素材）
 
 | 来源 | 量级 | 是否被校准吸收 |
@@ -978,8 +961,6 @@ AD/DA 相关管脚经过三方核对（底板原理图 `connector.SchDoc`、核�
 | TEST_LED2 | A46 | B46 | **AC21**| IO_L14P_T2_SRCC_13 | B13_L14_P |
 
 电平标准的依据：Bank 12/13（AD/DA/LED）由 VADJ 供电，默认 3.3V，用 `LVCMOS33`；Bank 34 的 C8（PL 时钟）核心板标注 1.35V/1.5V，用 `SSTL135`。SSTL135 的判决门限（≈0.675V）在 3.3V 供电下同样能识别 3.3V 时钟电平，所以两种供电情形都能工作；若 Vivado 报 IOSTANDARD 相关 DRC，改成 `LVCMOS33` 即可。
-
-<div class="shot-placeholder"><strong>截图待补</strong>：需要一张 XDC 约束文件截图（来源：`constraints/ad_capture_top.xdc`，含 C8 时钟约束与 6 根 AD 线的 PACKAGE_PIN/IOSTANDARD）</div>
 
 ## 踩过的坑
 

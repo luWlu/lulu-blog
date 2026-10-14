@@ -3,4 +3,4 @@ import Layout from '../layouts/Layout.astro';
 import Icon from '../components/Icon.astro';
 import { url } from '../lib/site';
 ---
-<Layout title="页面走丢了" noindex><section class="container not-found"><span class="error-number">4<span>✳</span>4</span><h1>这条线路，暂时还没接通。</h1><p>页面可能已移动，或者地址有一点小误差。</p><a class="button button-primary" href={url()}>回到首页 <Icon name="right" size={18} /></a></section></Layout>
+<Layout title="页面走丢了" noindex canonical={false}><section class="container not-found"><span class="error-number">4<span>✳</span>4</span><h1>这条线路，暂时还没接通。</h1><p>页面可能已移动，或者地址有一点小误差。</p><a class="button button-primary" href={url()}>回到首页 <Icon name="right" size={18} /></a></section></Layout>

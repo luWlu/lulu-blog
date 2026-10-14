@@ -2,10 +2,10 @@
 import '../styles/global.css';
 import Icon from '../components/Icon.astro';
 import { site, url } from '../lib/site';
-interface Props { title?: string; description?: string; active?: string; noindex?: boolean; }
-const { title, description = site.description, active = '', noindex = false } = Astro.props;
+interface Props { title?: string; description?: string; active?: string; noindex?: boolean; canonical?: boolean; }
+const { title, description = site.description, active = '', noindex = false, canonical: showCanonical = true } = Astro.props;
 const pageTitle = title ? `${title} · ${site.name}` : `${site.name} — 学习、探索与创造`;
-const canonical = new URL(Astro.url.pathname, Astro.site);
+const canonical = showCanonical ? new URL(Astro.url.pathname, Astro.site) : undefined;
 const navigation = [{ label: '首页', path: '', key: 'home' }, { label: '实验记录', path: 'experiments/', key: 'experiments' }, { label: '学习记录', path: 'notes/', key: 'notes' }, { label: '项目展示', path: 'projects/', key: 'projects' }, { label: '关于我', path: 'about/', key: 'about' }];
 ---
 <!doctype html>
@@ -16,11 +16,11 @@ const navigation = [{ label: '首页', path: '', key: 'home' }, { label: '实验
     <meta name="description" content={description} />
     <meta name="theme-color" content="#7453de" />
     {noindex && <meta name="robots" content="noindex, follow" />}
-    <link rel="canonical" href={canonical} />
+    {canonical && <link rel="canonical" href={canonical} />}
     <meta property="og:type" content="website" />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
-    <meta property="og:url" content={canonical} />
+    {canonical && <meta property="og:url" content={canonical} />}
     <meta property="og:image" content={new URL(url('social-card.svg'), Astro.site)} />
     <link rel="icon" type="image/svg+xml" href={url('favicon.svg')} />
     <link rel="alternate" type="application/rss+xml" title={site.name} href={url('rss.xml')} />

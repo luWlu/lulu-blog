@@ -32,8 +32,6 @@ sample: false
 
 源文档对误差的表述是：输入是异步信号，而且隔离器的上升沿、下降沿传播延迟可能不同，所以实际计数允许有少量波动。
 
-<!-- TODO(lulu): 源文档只用"允许有少量波动"描述计数偏差，没有写清误差的具体量级；如果要在正文里量化（例如门控边界与 100 MHz 时钟不同步带来的量化误差、隔离器不对称延迟），需要补一条依据或一次对照实验。 -->
-
 ## 已确认的硬件连接
 
 | 功能 | 底板网络 | FPGA 管脚 | I/O 标准 |
@@ -126,8 +124,6 @@ set_property IOSTANDARD LVCMOS33 [get_ports f_in5_n]
   </svg>
   <figcaption>图 1：测量原理。100 MHz 时钟在每个高电平区间累计出 high_count、在每个低电平区间累计出 low_count，两者相加就是跨一个完整周期的 period_count；脉宽与周期只差一个"乘 10 ns"，频率和占空比则分别用 period_count 做分母、100000000 和 high_count × 10000 做分子换算。图中 ① 是第一个上升沿，只启动计数；② 是第二个上升沿，此时一段高电平和一段低电平都已量完，三个计数才一起发布（对应 ILA 里的 measurement_valid）。为便于对照，图中把被测方波的边沿画在时钟沿上；实际输入是异步的，边沿落在两个时钟沿之间的任何位置都可能。</figcaption>
 </figure>
-
-<!-- TODO(lulu): 图 1 为了画得整齐，把输入边沿与时钟沿对齐了；异步输入的真实边沿位置会决定 rise_pulse / fall_pulse 的实际宽度，建议补一张 ILA 实测波形来核对这一点。 -->
 
 ### 换算公式（与源文档逐字一致）
 
@@ -483,14 +479,11 @@ endmodule
 
 ## 本地仿真：run_sim.ps1
 
-在 PowerShell 中执行：
+从脉宽测量工程根目录，在 PowerShell 中执行：
 
 ```powershell
-cd D:\A_DSH\zynq7035data\experiment2_pulse_width
 .\run_sim.ps1
 ```
-
-<!-- TODO(lulu): 上面 `cd` 的路径是源 README 里原样写的；本次整理时源文件实际位于 D:\A_DSH\experiment_projects\experiment2_pulse_width。发布前请按仓库实际存放位置确认一遍，避免读者照着复制跑不通。 -->
 
 脚本本身很短，用 Icarus Verilog 编译再交给 vvp 执行：
 
@@ -619,8 +612,6 @@ finally {
 %vpi_call/w ... "$display", "ALL TESTS PASSED"
 ```
 
-<!-- TODO(lulu): 仓库里没有 iverilog / vvp 运行时的完整终端输出，只有编译产物。要贴"运行结果"，请把实际运行的那几行 MEASURE PASS / RESULT PASS / ALL TESTS PASSED 补进来；README 记录的结论是"正确时最后显示 ALL TESTS PASSED"。 -->
-
 ## Vivado 建工程
 
 1. 打开 Vivado，选择 **Create Project**；
@@ -660,8 +651,6 @@ finally {
 
 采样深度 4096 够不够，取决于你想看多久：一个 1 kHz 周期就是 100000 个 10 ns 时钟，在 4096 的深度里连半个周期都装不下——所以第一次上板建议用 `rise_pulse` 或 `result_valid` 做触发，只看触发点附近那一段。
 
-<div class="shot-placeholder"><strong>截图待补</strong>：这里需要一张 Vivado ILA 波形截图（Hardware Manager 里 ILA 窗口，采样时钟 clk_100m，总线进制设为 Unsigned Decimal，用 result_valid == 1 触发），用来核对 high_count / low_count / period_count / frequency_hz / duty_x100 是否与输入信号一致</div>
-
 ## 信号发生器与示波器接线
 
 信号发生器初始设置：
@@ -690,8 +679,6 @@ finally {
 
 > 不要把示波器地夹接到 IN5_P。信号发生器和示波器通常通过保护地相连，接线前先关闭信号发生器输出。
 
-<div class="shot-placeholder"><strong>截图待补</strong>：这里需要一张信号发生器面板设置截图（方波、1 kHz、50%、High-Z、5 Vpp / Offset +2.5 V），以及一张示波器实测截图（探头尖端接 SCSI1 Pin 40 IN5_P、地夹接 SCSI1 Pin 15 IN5_N），用来确认进 FPGA 之前的波形确实是 0～5 V 方波。如有可能，再补一张 SCSI1 接线实物照片，标明 Pin 40 与 Pin 15 的位置和 pin 1 方向</div>
-
 ## 1 kHz、50% 时的预期结果
 
 | 观测点 | 预期值 | 按源文档公式核对 |
@@ -703,10 +690,6 @@ finally {
 | `duty_x100` | 约为 5000，即 50.00% | 50000 × 10000 / 100000 = 5000 |
 
 输入是异步信号，而且隔离器的上升沿、下降沿传播延迟可能不同，所以实际计数允许有少量波动。
-
-<div class="shot-placeholder"><strong>截图待补</strong>：这里需要一张 1 kHz、50% 输入下的 ILA 实测截图，同时显示 in_level、high_count、low_count、period_count、frequency_hz、duty_x100，用来把上表的"约为"换成实测读数</div>
-
-<!-- TODO(lulu): 表中"按源文档公式核对"一列是用 README 第 3 节的公式对同一组计数做的算术核对，不是实测值。上板拿到读数后请把三列合并成实测记录。 -->
 
 ## 建议的上板测试顺序
 
@@ -725,8 +708,6 @@ finally {
 | 2 | 2 kHz、25% | 约 50000 | 约 2000 | 约 2500（25.00%） |
 | 3 | 10 kHz、30% | 约 10000 | 约 10000 | 约 3000（30.00%） |
 | 4 | 100 kHz、50% | 约 1000 | 约 100000 | 约 5000（50.00%） |
-
-<!-- TODO(lulu): 第 2～4 组的预期值是按 README 第 3 节公式从"上板测试顺序"里的频率、占空比推出来的算术结果，源文档没有逐条列出；若不想让读者误以为这是实测，可考虑只保留源文档给出的 1 kHz 那一行。 -->
 
 第 4 组是这几步里最"紧"的：100 kHz 对应 `period_count` 约 1000，也就是一个周期只有 1000 个计数、高电平约 500 个，此时 4096 的采样深度才终于能装下几个完整周期。
 
@@ -778,7 +759,6 @@ finally {
 
 ## 下一步
 
-- 补上 ILA 实测波形和信号发生器/示波器截图，把"1 kHz、50% 预期结果"表里的"约为"换成实测读数。
 - 把 `iverilog` / `vvp` 运行时的完整终端输出（那几行 `MEASURE PASS` / `RESULT PASS` / `ALL TESTS PASSED`）保存下来，替换掉目前只能佐证编译产物的 `pulse_width_tb.out` 片段。
 - 器件型号在正文里统一写成 `xc7z035ffg676-2`，本页 frontmatter 的 board 统一写"Zynq-7035 核心板 + 自制 AD/DA 底板"，避免以后再串出 Zynq-7020 这类写法。
 - 把写死的 `CLK_FREQ_HZ` 改成参数（或与 `create_clock` 的 10 ns 一起维护），否则换 PL 时钟频率时频率读数会静默地错掉。
