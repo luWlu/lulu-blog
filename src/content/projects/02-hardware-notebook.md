@@ -7,7 +7,7 @@ status: "计划中"
 accent: "lime"
 diagram: "board"
 sample: true
-draft: false
+draft: true
 ---
 
 > 这是项目详情的版式示例，没有实际的成品、测试结果或完成情况。

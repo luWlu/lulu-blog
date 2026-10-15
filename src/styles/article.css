@@ -1,0 +1,133 @@
+.article-reading-progress {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 40;
+  height: 3px;
+  background: var(--purple);
+  transform: scaleX(0);
+  transform-origin: left;
+  pointer-events: none;
+}
+
+.mobile-toc {
+  display: none;
+}
+
+.article-toc nav a.is-active,
+.mobile-toc nav a.is-active {
+  color: var(--purple-dark);
+  font-weight: 650;
+}
+
+.article-toc nav a.is-active {
+  border-left: 2px solid var(--purple);
+  padding-left: 10px;
+}
+
+.prose .code-block {
+  min-width: 0;
+  margin: 24px 0;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-soft);
+  overflow: hidden;
+}
+
+.code-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  font-family: var(--font);
+  line-height: 1.5;
+}
+
+.code-language {
+  color: var(--muted);
+  font: 11px var(--mono);
+}
+
+.code-copy {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--purple-dark);
+  background: var(--purple-soft);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.code-copy:hover {
+  border-color: var(--purple);
+}
+
+.code-copy:focus-visible {
+  outline-offset: 2px;
+}
+
+.prose .code-block pre {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+@media (max-width: 800px) {
+  .mobile-toc {
+    display: block;
+    margin-top: 28px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--surface);
+  }
+
+  .mobile-toc summary {
+    padding: 13px 17px;
+    color: var(--purple-dark);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .mobile-toc summary > span {
+    margin-left: 12px;
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--muted);
+  }
+
+  .mobile-toc nav {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-height: 52vh;
+    max-height: 52dvh;
+    overflow-y: auto;
+    padding: 4px 17px 17px;
+    border-top: 1px solid var(--line);
+  }
+
+  .mobile-toc nav a {
+    padding: 8px 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .mobile-toc nav a.toc-sub {
+    padding-left: 14px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 640px) {
+  .code-toolbar {
+    padding: 5px 9px;
+  }
+  .code-copy {
+    min-height: 40px;
+  }
+}

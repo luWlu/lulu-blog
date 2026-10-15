@@ -5,7 +5,7 @@ date: 2026-10-13
 category: "实践手记"
 tags: ["实验记录", "复盘"]
 sample: true
-draft: false
+draft: true
 ---
 
 > 这是一篇实验记录模板，用于展示排版。下方没有实际测量结果，也不代表已完成的实验。

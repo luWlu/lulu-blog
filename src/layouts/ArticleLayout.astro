@@ -1,20 +1,73 @@
 ---
 import Layout from './Layout.astro';
 import Icon from '../components/Icon.astro';
-import { url, dateLabel, readingTime } from '../lib/site';
+import { url, dateLabel, readingTime, site } from '../lib/site';
+import '../styles/article.css';
 import type { MarkdownHeading } from 'astro';
-interface Props { title: string; description: string; date: Date; tags: string[]; sample: boolean; kind: 'notes' | 'projects' | 'experiments'; headings: MarkdownHeading[]; body?: string; category?: string; status?: string; repository?: string; demo?: string; }
+
+interface Props {
+  title: string;
+  description: string;
+  date: Date;
+  tags: string[];
+  sample: boolean;
+  kind: 'notes' | 'projects' | 'experiments';
+  headings: MarkdownHeading[];
+  body?: string;
+  category?: string;
+  status?: string;
+  repository?: string;
+  demo?: string;
+}
 const { title, description, date, tags, sample, kind, headings, body = '', category, status, repository, demo } = Astro.props;
 const toc = headings.filter(heading => heading.depth === 2 || heading.depth === 3);
 const kindLabels = { notes: '学习记录', projects: '项目展示', experiments: '实验记录' } as const;
 const kindLabel = kindLabels[kind];
 ---
-<Layout title={title} description={description} active={kind} noindex={sample}>
-  <div class="container article-page"><a class="back-link" href={url(`${kind}/`)}><Icon name="back" size={17} /> 返回{kindLabel}</a>
-    <header class="article-header"><div class="article-eyebrow"><span class="category-pill">{category || kindLabel}</span>{sample ? <span class="sample-label">示例内容</span> : status && <span class="sample-label">{status}</span>}</div><h1>{title}</h1><p class="article-description">{description}</p><div class="article-meta"><span class="author-badge">l</span><span>lulu</span><span class="meta-dot">·</span><time datetime={date.toISOString()}>{dateLabel(date)}</time><span class="meta-dot">·</span><span>{readingTime(body)} 分钟阅读</span></div><div class="tag-list article-tags">{tags.map(tag => <span>#{tag}</span>)}</div></header>
+<Layout title={title} description={description} active={kind} noindex={sample} article={{ date, tags }}>
+  <div class="article-reading-progress" aria-hidden="true"></div>
+  <div class="container article-page">
+    <a class="back-link" href={url(`${kind}/`)}><Icon name="back" size={17} /> 返回{kindLabel}</a>
+    <header class="article-header">
+      <div class="article-eyebrow">
+        <span class="category-pill">{category || kindLabel}</span>
+        {sample ? <span class="sample-label">示例内容</span> : status && <span class="sample-label">{status}</span>}
+      </div>
+      <h1>{title}</h1>
+      <p class="article-description">{description}</p>
+      <div class="article-meta">
+        <span class="author-badge">l</span><span>{site.author}</span><span class="meta-dot">·</span>
+        <time datetime={date.toISOString()}>{dateLabel(date)}</time><span class="meta-dot">·</span>
+        <span>{readingTime(body)} 分钟阅读</span>
+      </div>
+      <div class="tag-list article-tags">{tags.map(tag => <span>#{tag}</span>)}</div>
+    </header>
     {sample && <div class="sample-notice article-sample"><span class="tiny-dot"></span> 这是一篇用于预览的示例，不代表 lulu 已有的学习经历或项目成果。</div>}
-    <div class="article-grid"><article class="prose"><slot />{(repository || demo) && <div class="project-external-links">{repository && <a href={repository} target="_blank" rel="noopener noreferrer"><Icon name="github" size={18} /> 项目代码 <Icon name="arrow" size={15} /></a>}{demo && <a href={demo} target="_blank" rel="noopener noreferrer">查看演示 <Icon name="arrow" size={15} /></a>}</div>}<div class="article-end"><Icon name="sparkle" size={23} /><span>记录每一次「原来如此」。</span></div></article>
-      {toc.length > 0 && <aside class="article-toc" aria-label="文章目录"><div class="toc-inner"><h2>{kind === 'experiments' ? '这个实验的目录' : '这篇笔记的坐标'}</h2><nav>{toc.map(heading => <a href={`#${heading.slug}`} class:list={{ 'toc-sub': heading.depth === 3 }}>{heading.text}</a>)}</nav><a class="toc-back" href="#main">回到顶部 ↑</a></div></aside>}
+    {toc.length > 0 && <details class="mobile-toc">
+      <summary>文章目录 <span>{toc.length} 个章节</span></summary>
+      <nav aria-label="文章目录（移动端）">
+        {toc.map(heading => <a href={`#${heading.slug}`} data-toc-link={heading.slug} class:list={{ 'toc-sub': heading.depth === 3 }}>{heading.text}</a>)}
+      </nav>
+    </details>}
+    <div class="article-grid">
+      <article class="prose" data-article-content>
+        <slot />
+        {(repository || demo) && <div class="project-external-links">
+          {repository && <a href={repository} target="_blank" rel="noopener noreferrer"><Icon name="github" size={18} /> 项目代码 <Icon name="arrow" size={15} /></a>}
+          {demo && <a href={demo} target="_blank" rel="noopener noreferrer">查看演示 <Icon name="arrow" size={15} /></a>}
+        </div>}
+        <div class="article-end"><Icon name="sparkle" size={23} /><span>记录每一次「原来如此」。</span></div>
+      </article>
+      {toc.length > 0 && <aside class="article-toc" aria-label="文章目录">
+        <div class="toc-inner">
+          <h2>{kind === 'experiments' ? '这个实验的目录' : '这篇手记的坐标'}</h2>
+          <nav>{toc.map(heading => <a href={`#${heading.slug}`} data-toc-link={heading.slug} class:list={{ 'toc-sub': heading.depth === 3 }}>{heading.text}</a>)}</nav>
+          <a class="toc-back" href="#main">回到顶部 ↑</a>
+        </div>
+      </aside>}
     </div>
   </div>
+  <script>
+    import '../scripts/article';
+  </script>
 </Layout>

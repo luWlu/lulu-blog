@@ -1,6 +1,6 @@
 ---
 title: "前置实验：EMIO 点灯，第一次让 PS 控制 PL 引脚"
-description: "PS 端使能 EMIO GPIO，用 SCU 私有定时器中断让 PL 侧 LED 每秒亮灭一次，验证 EMIO 通路必须先配置 PL 才能工作。"
+description: "PS 端使能 EMIO GPIO，用 SCU 私有定时器中断让 PL 侧 LED 每秒翻转一次，验证 EMIO 通路必须先配置 PL 才能工作。"
 date: 2026-09-11
 order: 0
 stage: "前置"
@@ -35,13 +35,13 @@ Zynq 和普通单片机的最大区别是：芯片里同时住着**一个 ARM �
 - **PS（Processing System）**：ARM Cortex-A9 双核，外加一堆硬核外设——DDR 控制器、GPIO 控制器、GIC 中断控制器、SCU 私有定时器、TTC、Global Timer 等。C 代码跑在这里。
 - **PL（Programmable Logic）**：可编程逻辑。**本实验在 PL 里一行逻辑都不写**，它只是被「借道」：EMIO 信号进到 PL、走过布线资源、从引脚出去。
 
-源文档在约束文件的说明里专门记了一笔：本设计 EMIO 通路上**没有 PL 时钟域逻辑**，因此 XDC 里**不需要额外的 `create_clock`**，出现 `unconstrained paths` 的 warning 可以忽略。
+本设计的 EMIO 通路**没有 PL 时钟域逻辑**，不必为这条 GPIO 走线虚构一个 `create_clock`。若有未约束路径，应先确认只涉及这条 GPIO 通路；其他 PL 时序逻辑仍须完整约束。
 
-源 README 的器件说明原文是：
+关于器件型号的说明：
 
-> 目标器件以 `xc7z020clg400-1`（正点原子启明星 / 米联客 MZ702 等常见 7020 板）为例，**引脚号必须按你自己板子的原理图改**。
+> 下面的通用配置示例以 `xc7z020clg400-1`（常见 7020 开发板）为例，**上板时器件型号与引脚号必须按自己板子的原理图修改**（本套实验底板搭配的是 Zynq-7035 核心板）。
 
-也就是说，`xc7z020clg400-1` 是这份文档拿来做**通用示例**的器件，配套的引脚号、电平标准都只是示例值。
+也就是说，示例中的 `xc7z020clg400-1` 以及配套的引脚号、电平标准都只是演示值，实际建工程时需替换为目标核心板的参数。
 
 ### 工具链
 
@@ -51,7 +51,7 @@ Zynq 和普通单片机的最大区别是：芯片里同时住着**一个 ARM �
 | 软件：Platform/BSP、应用工程、编译 | Vitis | ELF |
 | 下载与运行 | Vitis（Program FPGA + Run） | 板上现象 |
 
-源文档的写法是「打开 Vitis（2019.2 及以前是 XSDK，操作类似）」，**没有写死 Vivado / Vitis 的版本号**。
+软件侧按 Vitis 的 XSA / Platform 流程说明。本文未记录实际 Vivado / Vitis 版本；Vitis 从 2019.2 引入，2019.1 及以前使用 SDK，界面和硬件导出格式有所不同，使用时按自己的工具链调整。
 
 ## MIO 和 EMIO 到底差在哪
 
@@ -79,10 +79,8 @@ PS GPIO 控制器 ──EMIO信号──> PL 布线资源 ──> PL 的某个 I
       <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
     </marker>
   </defs>
-
   <rect x="14" y="18" width="506" height="232" rx="10" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="7 6" opacity="0.55"/>
   <text x="26" y="40" font-size="12" fill="currentColor" opacity="0.85">Zynq 芯片封装边界（PS 与 PL 同在一颗器件内）</text>
-
   <rect x="32" y="56" width="170" height="168" rx="8" fill="currentColor" opacity="0.06" stroke="currentColor" stroke-width="2"/>
   <text x="117" y="80" text-anchor="middle" font-size="13" fill="currentColor">PS（处理系统）</text>
   <rect x="44" y="94" width="146" height="36" rx="6" fill="currentColor" opacity="0.12" stroke="currentColor" stroke-width="2"/>
@@ -90,12 +88,10 @@ PS GPIO 控制器 ──EMIO信号──> PL 布线资源 ──> PL 的某个 I
   <text x="46" y="152" font-size="11" fill="currentColor">bank0/1: MIO0~53</text>
   <text x="46" y="174" font-size="11" fill="currentColor">bank2/3: EMIO0~63</text>
   <text x="46" y="204" font-size="11" fill="currentColor" opacity="0.85">MIO 引脚出厂固定</text>
-
   <line x1="202" y1="118" x2="294" y2="118" stroke="currentColor" stroke-width="3" marker-end="url(#emio-arrow)"/>
   <text x="248" y="98" text-anchor="middle" font-size="11" fill="currentColor">EMIO 信号</text>
   <text x="248" y="146" text-anchor="middle" font-size="11" fill="currentColor">EMIO0</text>
   <text x="248" y="164" text-anchor="middle" font-size="11" fill="currentColor">= 引脚号 54</text>
-
   <rect x="302" y="56" width="188" height="168" rx="8" fill="currentColor" opacity="0.06" stroke="currentColor" stroke-width="2"/>
   <text x="396" y="80" text-anchor="middle" font-size="13" fill="currentColor">PL（可编程逻辑）</text>
   <rect x="316" y="94" width="160" height="36" rx="6" fill="currentColor" opacity="0.12" stroke="currentColor" stroke-width="2"/>
@@ -103,15 +99,12 @@ PS GPIO 控制器 ──EMIO信号──> PL 布线资源 ──> PL 的某个 I
   <text x="316" y="154" font-size="11" fill="currentColor">本设计 EMIO 通路</text>
   <text x="316" y="174" font-size="11" fill="currentColor">无 PL 逻辑，仅走线</text>
   <text x="316" y="204" font-size="11" fill="currentColor" opacity="0.85">不需要 create_clock</text>
-
   <text x="524" y="42" font-size="11" fill="currentColor" opacity="0.85">芯片封装引脚</text>
-
   <line x1="490" y1="118" x2="566" y2="118" stroke="currentColor" stroke-width="3" marker-end="url(#emio-arrow)"/>
   <rect x="572" y="78" width="128" height="88" rx="8" fill="currentColor" opacity="0.08" stroke="currentColor" stroke-width="2"/>
   <text x="636" y="108" text-anchor="middle" font-size="12" fill="currentColor">板上 LED</text>
   <text x="636" y="130" text-anchor="middle" font-size="11" fill="currentColor">（PL 侧）</text>
   <text x="636" y="154" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.9">XDC: PACKAGE_PIN</text>
-
   <text x="360" y="286" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">MIO：出厂固定，直接连到 PS 的物理引脚；EMIO：信号先进 PL，再由 PL 引脚引出</text>
 </svg>
 <figcaption>图 1：EMIO 通路必须穿过 PL。PS 里的 GPIO 控制器把信号交给 PL 的布线资源，再由一个 PL 的 IO 引脚送出芯片——所以这个引脚必须在 XDC 里被约束，而且每次上电都要先配置 PL。</figcaption>
@@ -140,7 +133,7 @@ PS 端可用的定时器有三种，本任务用第一种就够了：
 | Global Timer（全局定时器） | 64 位，`sleep()` / `usleep()` 底层就用它 | 做「软件延时轮询」最省事 |
 | TTC（Triple Timer Counter） | PS 外设，可以输出 PWM 或做计数 | 需要 PWM / 计数的场合 |
 
-源文档对方案选择的说法很明确：`usleep(500000)` / `sleep(1)` 也能实现 1 秒翻转（见 `src/led_poll.c`），但题目要求「编写定时器模块」，所以推荐用**私有定时器 + 中断**（见 `src/led_timer_intr.c`）——这才是真正的「定时器模块」，也更能体现 PS 端编程能力。
+轮询版 `src/led_poll.c` 在每次翻转后调用 `sleep(1)`，可实现约 1 秒翻转、完整周期约 2 秒；改成 `usleep(500000)` 后，翻转间隔是 0.5 秒、完整周期约 1 秒。本实验选择 `src/led_timer_intr.c` 的**私有定时器 + 中断**方案，以便把定时器配置、中断注册和 GPIO 控制一起理清。
 
 ## Vivado 侧：把 EMIO 引到 PL 引脚
 
@@ -149,7 +142,7 @@ PS 端可用的定时器有三种，本任务用第一种就够了：
 ### 建工程
 
 1. Vivado → Create Project → RTL Project → 勾选 **Do not specify sources at this time**。
-2. Parts 选你的器件。源文档给的示例是 7020 常见的 `xc7z020clg400-1`（400 脚）或 `xc7z020clg484-1`（484 脚），**按开发板选**。
+2. Parts 选你的器件。比如 7020 常见的 `xc7z020clg400-1`（400 脚）或 7035 的 `xc7z035ffg676-2`（676 脚），**按实际开发板选**。
 3. （可选）Boards 页选对应开发板，这样 DDR / 时钟等预设会自动带上。
 
 ### 搭 Block Design
@@ -194,7 +187,7 @@ report_property [get_bd_cells processing_system7_0] -filter {NAME =~ *GPIO*}
 puts "==> EMIO GPIO 已使能，位宽 1。请对 GPIO_0 端口执行 Make External。"
 ```
 
-脚本自己的注意事项写在头部：**Make External 这一步推荐手动点**（用 Tcl 做容易踩坑）；如果 Tcl 报「`CONFIG.PCW_GPIO_EMIO_GPIO_IO` 不是有效属性」，说明版本属性名不同，改回 GUI 操作即可。
+**Make External 建议在界面中确认端口后操作**；如果 Tcl 报「`CONFIG.PCW_GPIO_EMIO_GPIO_IO` 不是有效属性」，说明版本属性名不同，改回 GUI 操作即可。
 
 ### Make External：把 EMIO 交到 PL 引脚上
 
@@ -205,7 +198,7 @@ puts "==> EMIO GPIO 已使能，位宽 1。请对 GPIO_0 端口执行 Make Exter
    - `GPIO_0_0[0:0]`（1 位时也可能写成 `GPIO_0_0[0]`）
    - 或你改名后的 `led[0]`
 
-不同 Vivado 版本命名有差异，源文档强调**别猜**，用下面任一方法确认：
+不同 Vivado 版本命名有差异，这里**千万别猜**，用下面任一方法确认：
 
 - 打开 `sources_1/bd/design_1/hdl/design_1_wrapper.v`，看 `input/output/inout` 那一行；
 - 或在 Tcl Console 执行：
@@ -216,7 +209,7 @@ puts "==> EMIO GPIO 已使能，位宽 1。请对 GPIO_0 端口执行 Make Exter
 
   然后在里面找带 `GPIO` 或 `led` 的那个。
 
-另外一个容易让人犹豫的点，源文档也解释了：**EMIO GPIO 导出后是 inout（带三态），这是正常的**。PS 内部把三态控制线 T 拉低（= 输出），所以直接约束到 LED 引脚即可，**不需要额外加 IOBUF**。
+**EMIO GPIO 导出后是 inout（带三态），这是正常的**。要确认生成的顶层 wrapper 已包含所需 I/O 缓冲；工具已自动插入 IOBUF 时，不必手工重复添加。软件需设置 GPIO 方向与输出使能。
 
 ### 收尾 + 出 bitstream
 
@@ -278,12 +271,12 @@ set_property IOSTANDARD LVCMOS33               [get_ports {GPIO_0_0[0]}]
 
 # ---------------------------------------------------------------------------
 # 说明：
-#  * EMIO 导出后是 inout（含三态），属正常现象；PS 内部将 T 拉低以驱动输出，
-#    无需额外添加 IOBUF。
+#  * EMIO 导出后是 inout（含三态）；确认 wrapper 已包含所需 I/O 缓冲，
+#    不要重复插入 IOBUF。软件需设置方向与输出使能。
 #  * IOSTANDARD 必须与该引脚所在 Bank 的 VCCO 电压一致，否则实现阶段报
-#    DRC 错误（如 Bank 34/35 多为 3.3V -> LVCMOS33，部分板为 1.8V）。
+#    DRC 错误；不要仅凭 Bank 编号推定 VCCO，须按实际器件与原理图选择。
 #  * 本设计 EMIO 通路上没有 PL 时钟域逻辑，因此不需要额外的 create_clock；
-#    出现 "unconstrained paths" 的 warning 可忽略。
+#    未约束路径需逐项核对，不能据此忽略其他 PL 时序约束。
 # =============================================================================
 ```
 
@@ -291,17 +284,17 @@ set_property IOSTANDARD LVCMOS33               [get_ports {GPIO_0_0[0]}]
 
 | 字段 | 怎么确定 |
 |---|---|
-| **`PACKAGE_PIN`** | 打开开发板原理图，搜板上 PL 侧 LED（通常叫 `PL_LED0` / `LED0` / `DS0`），顺着网络找到 FPGA 的管脚号（源文档示例给的是 `Y9`、`M14`、`T22` 这类）。⚠️ **千万不要照抄别人板子的引脚号**，不同板子差异极大。 |
-| **`IOSTANDARD`** | 看该引脚属于哪个 Bank，以及 Bank 的 VCCO 电压。Bank 34/35 常见 `LVCMOS33`（3.3V），有些板是 `LVCMOS18`（1.8V）。填错会在实现阶段报 DRC 错误（Bank 电压冲突）。 |
-| **端口名** | 必须和 `get_ports` 的结果完全一致。写错的话综合不会报错，但实现时会出现「get_ports 未匹配到对象」的 critical warning，**引脚就是随机分配的，表现为 LED 完全不动**。 |
+| **`PACKAGE_PIN`** | 打开开发板原理图，搜板上 PL 侧 LED（通常叫 `PL_LED0` / `LED0` / `DS0`），顺着网络找到 FPGA 的管脚号（例如 `Y9`、`M14`、`V18` 这类）。⚠️ **千万不要照抄别人板子的引脚号**，不同板子差异极大。 |
+| **`IOSTANDARD`** | 看该引脚属于哪个 Bank，以及 Bank 的 VCCO 电压。同时核对该器件 Bank 支持的标准、实际供电与信号幅度，不要仅凭 Bank 编号推定电压。填错会在实现阶段报 DRC 错误（Bank 电压冲突）。 |
+| **端口名** | 必须和 `get_ports` 的结果完全一致。`get_ports` 未匹配到对象时约束不会生效，未约束 I/O 通常会被 UCIO-1 / NSTD-1 DRC 拦住。 |
 
-如果板上没有 PL 侧 LED，只有一个空闲扩展口，源文档给的做法是：把 LED 正极（长脚）串一个 **330Ω~1kΩ 电阻**接到该 IO，负极接 GND，同样能验证——注意别超过 IO 的驱动电流（约 **8~16mA**）。
+如果板上没有 PL 侧 LED，只有一个空闲扩展口，可以把 LED 正极（长脚）串一个 **330Ω~1kΩ 电阻**接到该 IO，负极接 GND，同样能验证——限流电阻、驱动电流和 Bank 电压均需按实际器件手册核对。
 
 ## Vitis 侧：PS 端的定时器模块
 
 ### 建 platform 和 application
 
-1. 打开 Vitis（2019.2 及以前是 XSDK，操作类似）。
+1. 打开与硬件工程匹配的 Vitis，以下按 XSA / Platform 流程说明。
 2. File → New → **Platform Project** → 名字如 `led_platform` → 选 **Create from XSA** → 选上一步导出硬件得到的那个 `.xsa` → Finish。
 3. 右键 platform → **Build**（生成 BSP，`xgpiops`、`xscutimer`、`xscugic` 驱动都在里面）。
 4. File → New → **Application Project** → 选刚才的 platform → 选 **Hello World** 模板（只是为了快速生成一个能跑的空壳）→ Finish。
@@ -333,7 +326,7 @@ XScuTimer_EnableInterrupt(&Timer);               /* 允许产生中断（漏了�
 XScuTimer_Start(&Timer);
 ```
 
-中断服务函数里只做翻转（源文档的告诫：**不要在 ISR 里加延时，也不要用 printf**）。`led_timer_intr.c` 里的原文：
+中断服务函数里只做翻转（切记：**不要在 ISR 里加延时，也不要用 printf**）。`led_timer_intr.c` 里的写法：
 
 ```c
 /******************************************************************************
@@ -346,7 +339,7 @@ static void TimerIntrHandler(void *CallBackRef)
     static u32 LedState = 0;
 
     if (XScuTimer_IsExpired(TimerInstancePtr)) {
-        /* 必须清中断标志，否则只会进一次中断 */
+        /* 清外设中断标志，避免中断持续挂起或反复进入 */
         XScuTimer_ClearInterruptStatus(TimerInstancePtr);
 
         LedState = (LedState == 0) ? 1 : 0;
@@ -359,20 +352,20 @@ static void TimerIntrHandler(void *CallBackRef)
 
 | 项 | 值 |
 |----|----|
-| CPU 时钟（7020 常见） | 666,666,687 Hz |
-| SCU 定时器时钟 | CPU/2 = 333,333,343 Hz |
-| 1 秒装载值 | 333,333,343 → 实际填 `TIMER_FREQ_HZ - 1` |
-| 0.5 秒 | `TIMER_FREQ_HZ / 2 - 1` |
+| CPU 时钟（通用计算示例） | 666,666,687 Hz，非本板已核定参数 |
+| SCU 定时器时钟（默认分频） | CPU/2；代码整数计算为 333,333,343 Hz |
+| 约 1 秒翻转间隔 | 按代码的减一约定，`TIMER_FREQ_HZ - 1` = 333,333,342 |
+| 约 0.5 秒翻转间隔 | `TIMER_FREQ_HZ / 2 - 1` = 166,666,670 |
 
-代码里用 `XPAR_CPU_CORTEXA9_CORE_CLOCK_FREQ_HZ / 2` 自动取频率，避免手写死数。如果编译报「宏未定义」，打开 BSP 的 `include/xparameters.h`，搜 `CPU_CLK_FREQ`，把宏名换成你 BSP 里实际的那个——源文档列了常见的几个：`XPAR_CPU_CORTEXA9_0_CPU_CLK_FREQ_HZ`、`XPAR_PS7_CORTEXA9_0_CPU_CLK_FREQ_HZ`。
+代码里用 `XPAR_CPU_CORTEXA9_CORE_CLOCK_FREQ_HZ / 2` 自动取频率，避免手写死数。如果编译报「宏未定义」，打开 BSP 的 `include/xparameters.h`，搜 `CPU_CLK_FREQ`，把宏名换成你 BSP 里实际的那个——常见的有 `XPAR_CPU_CORTEXA9_0_CPU_CLK_FREQ_HZ`、`XPAR_PS7_CORTEXA9_0_CPU_CLK_FREQ_HZ`。
 
-`led_timer_intr.c` 把这种版本差异用条件编译兜住了，值得抄：
+下面保留了 `led_timer_intr.c` 的条件编译写法。它覆盖部分常见宏名，但实际仍以 BSP 为准；最后的 667 MHz 兜底值仅为通用示例，不能代替本板 PS 时钟配置。
 
 ```c
 /* 注意：Vitis 不同版本的 BSP 里宏名不一样，例如
  *   旧: XPAR_XSCUGIC_0_DEVICE_ID    新: XPAR_SCUGIC_0_DEVICE_ID
  *   旧: XPAR_XSCUTIMER_0_INTR       新: XPAR_SCUTIMER_INTR
- * 下面用条件编译自动适配，新旧 BSP 都能直接编译通过。
+ * 下面用条件编译兼容部分常见宏名；仍需核对当前 BSP。
  * 若仍报未定义，请打开 BSP 的 ps7_cortexa9_0/include/xparameters.h，
  * 搜 SCUGIC / SCUTIMER / GPIOPS 关键字，用实际存在的宏名替换即可。 */
 
@@ -402,7 +395,7 @@ static void TimerIntrHandler(void *CallBackRef)
 #define TIMER_LOAD_VALUE    (TIMER_FREQ_HZ - 1)
 ```
 
-还有个小坑源文档顺手记了：`xil_printf` **不支持 `%lu`**，打印装载值要用 `%d` 或 `%x`：
+还有一个容易忽略的小坑：`xil_printf` **不支持 `%lu`**，打印装载值要用 `%d` 或 `%x`：
 
 ```c
 /* 注意：xil_printf 不支持 %lu，这里用 %d / %x */
@@ -423,11 +416,11 @@ while (1) {
 }
 ```
 
-答辩 / 验收时源文档建议交上面那个中断版，并说明「定时器模块」的配置过程。
+正式验收时更推荐用上面的中断版，能完整体现定时器与中断控制器的配置流程。
 
-#### 关于 `src/` 目录：其实是两套近乎等价的实现
+### 两套实现的差别
 
-源 README 的「文件清单」一节只列了 `src/led_timer_intr.c` 和 `src/led_poll.c` 两个文件，但目录里实际还有 `src/emio_led_1s.c` 和 `src/emio_led_poll.c`——同一套逻辑的另一版写法。实质差别只有这几处：
+工程的 `src/` 目录下除了 `src/led_timer_intr.c` 和 `src/led_poll.c`，还保留了 `src/emio_led_1s.c` 和 `src/emio_led_poll.c`——这是同一套逻辑的另一版写法，实质差别只有这几处：
 
 | | `led_timer_intr.c` / `led_poll.c` | `emio_led_1s.c` / `emio_led_poll.c` |
 |---|---|---|
@@ -473,7 +466,7 @@ while (1) {
   <text x="630" y="176" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.85">4s</text>
   <text x="70" y="196" font-size="11" fill="currentColor" opacity="0.8">翻转只在定时器到点（每 1 秒）时发生，ISR 里不做任何延时</text>
 </svg>
-<figcaption>图 2：LED 引脚上的预期波形——中断每 1 秒翻转一次电平，所以亮 1 秒、灭 1 秒，一个完整明暗周期 2 秒。（源文档没有附实测波形，这里画的是设计与装载值推出的预期。）</figcaption>
+<figcaption>图 2：LED 引脚上的预期波形——中断每 1 秒翻转一次电平，所以亮 1 秒、灭 1 秒，一个完整明暗周期 2 秒。</figcaption>
 </figure>
 
 ### 一个必须记住的前提
@@ -482,15 +475,15 @@ EMIO 通路依赖 PL。**每次运行前都必须先 Program FPGA（下载 bitst
 
 ## 排错清单
 
-按源文档给出的出现频率排序：
+可以按下面的顺序逐项排查：
 
 | 现象 | 原因 | 处理 |
 |------|------|------|
 | 完全不亮 | 没下载 bitstream / PL 未配置 | 先 Program FPGA 再跑 ELF |
 | 完全不亮（换了引脚也一样） | XDC 端口名写错，综合时 `get_ports` 没匹配上 | 看 implementation 的 critical warning，用 `get_ports *` 确认名字 |
-| 常亮或常灭，不闪 | LED 低电平点亮（共阳） | 把代码里 `led = !led` 改成初值取反，或交换 ON/OFF 电平 |
-| 一直亮着不灭 | 没调 `XGpioPs_SetOutputEnablePin` | EMIO 必须使能输出，MIO 才可省略 |
-| 只闪一下就停 | ISR 里没清中断状态 | 加 `XScuTimer_ClearInterruptStatus()` |
+| 明暗与软件 ON/OFF 标志相反 | LED 为低电平点亮 | 交换 `LED_ON` / `LED_OFF`；极性只改变明暗含义，不会使周期翻转消失 |
+| 常亮或常灭、不翻转 | 输出未使能、定时器未运行或通路有误 | 检查 GPIO 方向、输出使能、ISR 和实际引脚电平 |
+| 中断持续挂起或反复进入 | ISR 没清外设中断状态 | 检查 `XScuTimer_ClearInterruptStatus()` 与 GIC 配置 |
 | 中断完全不进 | 忘了 `XScuTimer_EnableInterrupt()`，或 GIC 没 `Xil_ExceptionEnable()` | 补上；确认中断号是 `XPAR_XSCUTIMER_0_INTR` |
 | 闪烁明显快/慢一倍以上 | 装载值用了 CPU 频率没除以 2 | SCU 定时器时钟 = CPU/2 |
 | 引脚号写对了但 LED 不动 | EMIO 位宽设成了 1，软件里却写引脚 55 | EMIO0 = 54，EMIO1 = 55 |
@@ -506,22 +499,22 @@ EMIO 通路依赖 PL。**每次运行前都必须先 Program FPGA（下载 bitst
 `XGpioPs` 里 MIO 占了 0~53，EMIO 从 54 才开始。写 55 就是去操作 EMIO1——而 EMIO1 在硬件上压根没被引出，现象是「什么都对但灯不动」。
 
 **3. 只设了方向，忘了输出使能。**
-`XGpioPs_SetDirectionPin` 和 `XGpioPs_SetOutputEnablePin` 对 EMIO **两个都要调**。MIO 可以省掉输出使能，EMIO 不行——这是 MIO / EMIO 在软件层面的一个实质差异。漏了它的现象就是「一直亮着不灭」。
+`XGpioPs_SetDirectionPin` 和 `XGpioPs_SetOutputEnablePin` 应配套设置，不要把 MIO 当作可以普遍省略输出使能的例外。
 
 **4. ISR 里忘了清中断标志。**
-`XScuTimer_ClearInterruptStatus()` 漏掉，中断只会进一次，LED 只闪一下就永远停住。
+`XScuTimer_ClearInterruptStatus()` 漏掉，外设中断可能持续挂起或反复进入；不能仅凭 LED 现象判断中断状态。
 
 **5. 中断配置缺一环，中断完全不进。**
 三个地方任何一个漏了都不进中断：定时器的 `XScuTimer_EnableInterrupt()`、GIC 的 `XScuGic_Connect()` / `XScuGic_Enable()`、以及 CPU 侧的 `Xil_ExceptionEnable()`。
 
 **6. 装载值忘了除以 2。**
-SCU 私有定时器的计数时钟是 **CPU 时钟 / 2**。直接拿 CPU 频率去装载，闪的就是半秒而不是一秒（快一倍）。
+默认分频下，SCU 私有定时器时钟是 **CPU 时钟 / 2**。若按 CPU 频率设置装载值，计数会花约两秒，翻转会**慢一倍**；若启用了预分频，还要把该系数一起计入。
 
 **7. XDC 里的端口名和 `get_ports` 的结果不一致。**
-综合阶段不报错，**实现阶段只给一个 critical warning**，然后引脚被随机分配——现象是 LED 完全不动，而且换个引脚号也一样。用 `get_ports *` 或 `design_1_wrapper.v` 把名字核实一遍，别猜。
+端口匹配失败时约束不生效，后续可能被未约束 I/O 的 DRC 拦住。用 `get_ports *` 或 wrapper 核实端口，确认新比特流确实生成后再下载。
 
 **8. IOSTANDARD 和 Bank 电压对不上。**
-填错会在实现阶段报 DRC（Bank 电压冲突）。Bank 34/35 常见 `LVCMOS33`，但有些板是 `LVCMOS18`，必须按原理图。
+填错会在实现阶段报 DRC（Bank 电压冲突）。所用标准必须同时符合实际器件的 Bank 能力和板上供电，不能照搬其他开发板。
 
 **9. 被 `XPAR_...` 宏名绊住。**
 同一个驱动在不同 Vitis 版本的 BSP 里宏名会变（`XPAR_XSCUGIC_0_DEVICE_ID` vs `XPAR_SCUGIC_0_DEVICE_ID`）。别硬记，打开 BSP 的 `xparameters.h` 搜关键字，或者直接用 `led_timer_intr.c` 里那套条件编译。

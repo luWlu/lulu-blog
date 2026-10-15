@@ -5,7 +5,7 @@ date: 2026-10-13
 category: "阅读笔记"
 tags: ["Datasheet", "资料整理"]
 sample: true
-draft: false
+draft: true
 ---
 
 > 本文是阅读笔记的版式示例，供后续替换。具体器件的参数和使用要求应以对应版本的官方资料为准。

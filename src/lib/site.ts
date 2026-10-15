@@ -7,7 +7,7 @@ export const site = {
 };
 
 export const url = (path = '') => `${import.meta.env.BASE_URL.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
-export const dateLabel = (date: Date) => date.toISOString().slice(0, 10).replaceAll('-', '.');
+export { dateLabel } from './date';
 export { readingTime } from './reading-time';
 
 export async function allNotes() {

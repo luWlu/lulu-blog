@@ -1,12 +1,12 @@
 ---
 title: "实验六：把标题改成这个实验的名字"
 description: "用一句话说清这个实验做了什么、验证了什么，40~60 字。这段文字会出现在卡片、搜索结果和 RSS 里。"
-date: 2026-10-20
+date: 2026-10-15 # 改为实际写作或整理发布日期；页面按 Asia/Shanghai 显示
 order: 7
 stage: "基础"
 status: "计划中"
 board: "Zynq-7035 核心板 + 自制 AD/DA 底板"
-tools: ["Vivado 2020.2", "示波器"]
+tools: ["Vivado", "示波器"] # 已核定版本才填写版本号
 tags: ["Zynq", "关键词一", "关键词二"]
 accent: "purple"
 diagram: "wave"
@@ -54,6 +54,8 @@ endmodule
 ```
 
 ## 仿真验证
+
+记录运行条件、检查项和实际输出。编译产物中的 PASS 字符串不等于已运行通过。
 
 ## 上板步骤
 

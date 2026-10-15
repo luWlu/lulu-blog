@@ -1,6 +1,6 @@
 ---
 title: "实验五：模拟量输出（DA 波形发生：固定电压 / 正弦 / 方波 / 三角）"
-description: "Zynq 纯 PL 工程驱动 DAC8871，用 DDS 波表输出固定电压、正弦、方波、三角波，含串行时序与实测记录。"
+description: "Zynq 纯 PL 工程驱动 DAC8871，用 DDS 波表输出固定电压、正弦、方波、三角波，含串行时序、仿真参考与实测记录表。"
 date: 2026-10-12
 order: 6
 stage: "进阶"
@@ -31,7 +31,7 @@ sample: false
 
 这是一个**纯 PL 工程**（无 PS 参与）。这点值得先说明：整条数据通路、节拍发生、波形计算、串行帧控制全部用 Verilog 写在 PL 里，不跑 ARM、不写 SDK 程序。参数调节靠 Vivado 的 **VIO（Virtual I/O）**在 Hardware Manager 里在线改，改完立即生效，**不需要重新综合**。
 
-要交付的东西有四类：
+实验材料按以下几类整理；其中上板量测维度尚未填写，不能视为已完成的测量结果：
 
 | 交付物 | 内容 |
 |---|---|
@@ -47,7 +47,7 @@ sample: false
 
 - **固定电压**：`mode=0`，输出一个稳定直流，范围 ±15000 mV，16 位分辨率（1 LSB ≈ 0.4578 mV）。这是用来验证"码值 → 电压"换算是否准确的那一档。
 - **正弦**：`mode=1`，4096 点 × 16 位查找表 + 32 位相位累加器，默认 1 kHz / ±10 V。
-- **方波**：`mode=2`，直接用相位累加器的最高位，精确 50% 占空比，前后半周期分别输出 +32767 / −32767。
+- **方波**：`mode=2`，直接用相位累加器的最高位，长期平均 50% 占空比，前后半周期分别输出 +32767 / −32767。
 - **三角**：`mode=3`，相位高 12 位做折叠（后半周期取反），先升后降，每半周期 2048 级。
 
 默认更新节拍是 `UPDATE_HZ = 100 kSPS`，也就是**每 10 µs 送一个码值**——这个数字后面会反复出现，它既决定了波形的采样点数，也决定了示波器上能看到的"台阶"。1 kHz 时每周期 100 个点，看起来很平滑；把频率调到 10 kHz 就只有 10 个点了，会看到明显的折线——这恰恰是"按数据输出波形"这个本质最直观的证据。
@@ -63,23 +63,18 @@ sample: false
   <text x="75" y="96" font-size="12" text-anchor="middle" fill="currentColor">FPGA (PL)</text>
   <text x="75" y="112" font-size="11" text-anchor="middle" fill="currentColor">DDS + 串行帧</text>
   <text x="75" y="128" font-size="11" text-anchor="middle" fill="currentColor">da_core</text>
-
   <rect x="160" y="70" width="110" height="70" fill="currentColor" fill-opacity="0.08" stroke="currentColor" stroke-width="2"></rect>
   <text x="215" y="100" font-size="12" text-anchor="middle" fill="currentColor">IL715</text>
   <text x="215" y="118" font-size="11" text-anchor="middle" fill="currentColor">数字隔离</text>
-
   <rect x="300" y="70" width="110" height="70" fill="currentColor" fill-opacity="0.08" stroke="currentColor" stroke-width="2"></rect>
   <text x="355" y="100" font-size="12" text-anchor="middle" fill="currentColor">DAC8871</text>
   <text x="355" y="118" font-size="11" text-anchor="middle" fill="currentColor">16 位串行 DAC</text>
-
   <rect x="440" y="70" width="110" height="70" fill="currentColor" fill-opacity="0.08" stroke="currentColor" stroke-width="2"></rect>
   <text x="495" y="100" font-size="12" text-anchor="middle" fill="currentColor">OPA207</text>
   <text x="495" y="118" font-size="11" text-anchor="middle" fill="currentColor">电压跟随</text>
-
   <rect x="580" y="70" width="110" height="70" fill="currentColor" fill-opacity="0.08" stroke="currentColor" stroke-width="2"></rect>
   <text x="635" y="100" font-size="12" text-anchor="middle" fill="currentColor">SCSI2 端子</text>
   <text x="635" y="118" font-size="11" text-anchor="middle" fill="currentColor">22 / 23 脚</text>
-
   <line x1="130" y1="105" x2="148" y2="105" stroke="currentColor" stroke-width="2"></line>
   <polygon points="160,105 146,99 146,111" fill="currentColor"></polygon>
   <line x1="270" y1="105" x2="288" y2="105" stroke="currentColor" stroke-width="2"></line>
@@ -88,7 +83,6 @@ sample: false
   <polygon points="440,105 426,99 426,111" fill="currentColor"></polygon>
   <line x1="550" y1="105" x2="568" y2="105" stroke="currentColor" stroke-width="2"></line>
   <polygon points="580,105 566,99 566,111" fill="currentColor"></polygon>
-
   <text x="20" y="185" font-size="11" fill="currentColor" opacity="0.85">VIO 虚拟输入（Hardware Manager）：mode[1:0] / freq_hz / amp_mv / dc_mv</text>
   <text x="20" y="207" font-size="11" fill="currentColor" opacity="0.85">CS_N / SCK / SDI 三线串行（MSB 在前，CS 上升沿把数据打入 DAC）</text>
   <text x="20" y="229" font-size="11" fill="currentColor" opacity="0.85">SCK = 12.5 MHz（SCK_DIV=8），整帧 136 拍 = 1.36 µs，节拍 100 kSPS</text>
@@ -143,8 +137,8 @@ Vout = VREFL + (VREFH − VREFL) × code/65536 = −15V + 30V × code/65536
 | 0 V | 0 | 0x8000 / 32768 | 0.000 V |
 | +5 V | 5000 | 0xAAAA / 43690 | +4.9997 V |
 | −5 V | −5000 | 0x5555 / 21845 | −5.0002 V |
-| +10 V | 10000 | 0xD565 / 54613 | +9.9998 V |
-| −10 V | −10000 | 0x2A9A / 10922 | −10.0003 V |
+| +10 V | 10000 | 0xD555 / 54613 | +9.9998 V |
+| −10 V | −10000 | 0x2AAA / 10922 | −10.0003 V |
 | +15 V | 15000 | 0xFFFF / 65535 | +14.9995 V |
 | −15 V | −15000 | 0x0000 / 0 | −15.0000 V |
 
@@ -156,25 +150,20 @@ Vout = VREFL + (VREFH − VREFL) × code/65536 = −15V + 30V × code/65536
 
 <figure class="diagram"><svg viewBox="0 0 720 320" role="img" aria-label="DAC8871 串行写时序：CS_N 拉低后 tLead，SCK 上跳沿锁存 16 位 SDI，tLag 后 CS 上升沿更新输出">
   <text x="6" y="26" font-size="11" fill="currentColor" opacity="0.85">一帧 = tLead + 16×SCK + tLag，帧间 CS 高电平为 tTD</text>
-
   <line x1="120" y1="36" x2="170" y2="36" stroke="currentColor" stroke-width="2"></line>
   <line x1="120" y1="32" x2="120" y2="44" stroke="currentColor" stroke-width="2"></line>
   <line x1="170" y1="32" x2="170" y2="44" stroke="currentColor" stroke-width="2"></line>
   <text x="145" y="30" font-size="11" text-anchor="middle" fill="currentColor">tLead 50ns</text>
-
   <line x1="530" y1="36" x2="620" y2="36" stroke="currentColor" stroke-width="2"></line>
   <line x1="530" y1="32" x2="530" y2="44" stroke="currentColor" stroke-width="2"></line>
   <line x1="620" y1="32" x2="620" y2="44" stroke="currentColor" stroke-width="2"></line>
   <text x="575" y="30" font-size="11" text-anchor="middle" fill="currentColor">tLag 110ns</text>
-
   <line x1="626" y1="36" x2="698" y2="36" stroke="currentColor" stroke-width="2" stroke-dasharray="5 4"></line>
   <text x="662" y="30" font-size="11" text-anchor="middle" fill="currentColor">tTD</text>
-
   <text x="6" y="72" font-size="11" fill="currentColor">CS_N</text>
   <polyline points="70,60 120,60 120,80 620,80 620,60 700,60" fill="none" stroke="currentColor" stroke-width="2"></polyline>
   <text x="126" y="98" font-size="11" fill="currentColor" opacity="0.85">CS↓ 开始一帧</text>
   <text x="624" y="98" font-size="11" fill="currentColor" opacity="0.85">CS↑ 输出更新</text>
-
   <text x="6" y="140" font-size="11" fill="currentColor">SCK</text>
   <polyline points="70,135 170,135 170,115 185,115 185,135 210,135 210,115 225,115 225,135 250,135 250,115 265,115 265,135 290,135 290,115 305,115 305,135 330,135" fill="none" stroke="currentColor" stroke-width="2"></polyline>
   <line x1="334" y1="125" x2="466" y2="125" stroke="currentColor" stroke-width="2" stroke-dasharray="5 4"></line>
@@ -184,7 +173,6 @@ Vout = VREFL + (VREFH − VREFL) × code/65536 = −15V + 30V × code/65536
   <line x1="170" y1="102" x2="170" y2="110" stroke="currentColor" stroke-width="2"></line>
   <line x1="210" y1="102" x2="210" y2="110" stroke="currentColor" stroke-width="2"></line>
   <text x="190" y="100" font-size="11" text-anchor="middle" fill="currentColor">tSCK 80ns</text>
-
   <text x="6" y="196" font-size="11" fill="currentColor">SDI</text>
   <polyline points="70,195 170,195 170,180 215,180 215,205 260,205 260,185 305,185 305,195" fill="none" stroke="currentColor" stroke-width="2"></polyline>
   <line x1="305" y1="195" x2="465" y2="195" stroke="currentColor" stroke-width="2" stroke-dasharray="5 4"></line>
@@ -193,11 +181,9 @@ Vout = VREFL + (VREFH − VREFL) × code/65536 = −15V + 30V × code/65536
   <text x="237" y="220" font-size="11" text-anchor="middle" fill="currentColor">D14</text>
   <text x="282" y="180" font-size="11" text-anchor="middle" fill="currentColor">D13</text>
   <text x="500" y="180" font-size="11" text-anchor="middle" fill="currentColor">D0</text>
-
   <text x="6" y="266" font-size="11" fill="currentColor">LDAC</text>
   <line x1="70" y1="261" x2="620" y2="261" stroke="currentColor" stroke-width="2"></line>
   <text x="628" y="265" font-size="11" fill="currentColor" opacity="0.85">LDAC_N 接地(=0)</text>
-
   <text x="6" y="296" font-size="11" fill="currentColor" opacity="0.85">SDI 在 SCK 上升沿被锁存，SCK 下降沿换下一位（MSB 在前，共 16 位）</text>
   <text x="6" y="314" font-size="11" fill="currentColor" opacity="0.85">16 位送完后 CS 拉高，CS 上升沿把数据打入 DAC 锁存器，输出随即更新</text>
 </svg><figcaption>图 2：DAC8871 串行写时序——CS_N / SCK / SDI / LDAC_N 与 tLead、tSCK、tLag、tTD 四个关键时间</figcaption></figure>
@@ -221,7 +207,7 @@ Vout = VREFL + (VREFH − VREFL) × code/65536 = −15V + 30V × code/65536
 | tTD（帧间 CS 高） | 30 ns | 10000−1360 = 8640 ns | 288× |
 | 整帧长度 | — | 4+16×8+4 = **136 拍 = 1.36 µs** | < 10 µs 更新节拍 |
 
-> SCK 只跑 12.5 MHz 的原因与 experiment4 的 ADC 相同：SCK/SDI 都要穿过 IL715（单程延时约 10~20 ns），SCK 与 SDI 两通道延时近似相等，真正的威胁是**时延差**，12.5 MHz 下建立裕量仍有 ~20-30 ns。若实测异常，把 `da_core` 的 `SCK_DIV` 加到 16/32 重新综合即可。
+> SCK 只跑 12.5 MHz 的原因与 experiment4 的 ADC 相同：SCK/SDI 都要穿过 IL715（单程延时约 10~20 ns），SCK 与 SDI 两通道延时近似相等，真正的威胁是**时延差**，12.5 MHz 下建立裕量仍有 ~20-30 ns。若实测异常，把 `da_core` 的 `SCK_DIV` 加到 16，核对相位计数位宽与新帧长后重新综合。
 
 ### DDS：怎么"按数据输出波形"
 
@@ -237,40 +223,34 @@ Vout = VREFL + (VREFH − VREFL) × code/65536 = −15V + 30V × code/65536
 | 波形 | 数据来源 | 说明 |
 |---|---|---|
 | 正弦 | **4096 点×16 位查找表**（phase 高 12 位作地址） | 表由 `scripts/gen_sine_lut.js` 生成：round(32767·sin(2πk/4096)) |
-| 方波 | phase 最高位 | 前半周期 +32767，后半周期 −32767（精确 50% 占空比） |
+| 方波 | phase 最高位 | 前半周期 +32767，后半周期 −32767（长期平均 50% 占空比） |
 | 三角 | phase 高 12 位折叠（后半周期取反） | 先升后降，每半周期 2048 级 |
 
-幅度统一处理：`code = 32768 + (w × K) >>> 15`，`K = (amp_mv × 143165)>>>16`（mV→LSB），所以任意幅度（钳位 ±15000 mV）下三种波形共用一条数据通路，只需一个 16×16 乘法器（DSP48）。
+幅度统一处理：`code = 32768 + ((w × K) >>> 15)`，`K = (amp_mv × 143165)>>>16`（mV→LSB），所以任意幅度（钳位 ±15000 mV）下三种波形共用一条数据通路，只需一个 16×16 乘法器（DSP48）。
 
 <figure class="diagram"><svg viewBox="0 0 720 320" role="img" aria-label="DDS 波形发生原理：节拍驱动 32 位相位累加器，相位截断后查表或折叠得到波形数据，再经幅度偏移换算为 DAC 码值">
   <text x="6" y="30" font-size="11" fill="currentColor" opacity="0.85">VIO 实时参数：mode 选波形 / freq_hz（≤20 kHz）/ amp_mv（钳位 ±15000 mV）</text>
-
   <rect x="16" y="70" width="128" height="100" fill="currentColor" fill-opacity="0.08" stroke="currentColor" stroke-width="2"></rect>
   <text x="80" y="95" font-size="11" text-anchor="middle" fill="currentColor">节拍 tick</text>
   <text x="80" y="113" font-size="11" text-anchor="middle" fill="currentColor">100 kSPS</text>
   <text x="80" y="131" font-size="11" text-anchor="middle" fill="currentColor">每 10 µs 一次</text>
-
   <rect x="156" y="70" width="128" height="100" fill="currentColor" fill-opacity="0.08" stroke="currentColor" stroke-width="2"></rect>
   <text x="220" y="95" font-size="11" text-anchor="middle" fill="currentColor">相位累加器</text>
   <text x="220" y="113" font-size="11" text-anchor="middle" fill="currentColor">32 位</text>
   <text x="220" y="131" font-size="11" text-anchor="middle" fill="currentColor">phase += fstep</text>
-
   <rect x="296" y="70" width="128" height="100" fill="currentColor" fill-opacity="0.08" stroke="currentColor" stroke-width="2"></rect>
   <text x="360" y="95" font-size="11" text-anchor="middle" fill="currentColor">相位截断</text>
   <text x="360" y="113" font-size="11" text-anchor="middle" fill="currentColor">取高 12 位</text>
   <text x="360" y="131" font-size="11" text-anchor="middle" fill="currentColor">地址 0~4095</text>
-
   <rect x="436" y="70" width="128" height="100" fill="currentColor" fill-opacity="0.08" stroke="currentColor" stroke-width="2"></rect>
   <text x="500" y="95" font-size="11" text-anchor="middle" fill="currentColor">波形数据 w</text>
   <text x="500" y="113" font-size="11" text-anchor="middle" fill="currentColor">正弦 LUT 4096</text>
   <text x="500" y="131" font-size="11" text-anchor="middle" fill="currentColor">方波 phase[31]</text>
   <text x="500" y="149" font-size="11" text-anchor="middle" fill="currentColor">三角折叠</text>
-
   <rect x="576" y="70" width="128" height="100" fill="currentColor" fill-opacity="0.08" stroke="currentColor" stroke-width="2"></rect>
   <text x="640" y="95" font-size="11" text-anchor="middle" fill="currentColor">幅度 / 偏移</text>
   <text x="640" y="113" font-size="11" text-anchor="middle" fill="currentColor">code = 32768 +</text>
   <text x="640" y="131" font-size="11" text-anchor="middle" fill="currentColor">(w × K) &gt;&gt;&gt; 15</text>
-
   <line x1="144" y1="120" x2="148" y2="120" stroke="currentColor" stroke-width="2"></line>
   <polygon points="156,120 142,114 142,126" fill="currentColor"></polygon>
   <line x1="284" y1="120" x2="288" y2="120" stroke="currentColor" stroke-width="2"></line>
@@ -279,10 +259,9 @@ Vout = VREFL + (VREFH − VREFL) × code/65536 = −15V + 30V × code/65536
   <polygon points="436,120 422,114 422,126" fill="currentColor"></polygon>
   <line x1="564" y1="120" x2="568" y2="120" stroke="currentColor" stroke-width="2"></line>
   <polygon points="576,120 562,114 562,126" fill="currentColor"></polygon>
-
   <text x="6" y="200" font-size="11" fill="currentColor" opacity="0.85">fstep = freq_hz × 42950（≈ 2^32 / 100000）；输出频率 = fstep × 100 kHz / 2^32 ≈ freq_hz</text>
-  <text x="6" y="222" font-size="11" fill="currentColor" opacity="0.85">正弦表 round(32767·sin(2πk/4096))，16 位有符号；方波用最高位，精确 50% 占空比</text>
-  <text x="6" y="244" font-size="11" fill="currentColor" opacity="0.85">三角：高 12 位折叠（后半周期取反），每半周期 2048 级，峰峰值比正弦小 20 LSB</text>
+  <text x="6" y="222" font-size="11" fill="currentColor" opacity="0.85">正弦表 round(32767·sin(2πk/4096))，16 位有符号；方波用最高位，长期平均 50% 占空比</text>
+  <text x="6" y="244" font-size="11" fill="currentColor" opacity="0.85">三角：高 12 位折叠（后半周期取反），每半周期 2048 级，amp=10000 时峰峰值比正弦小 20 LSB</text>
   <text x="6" y="266" font-size="11" fill="currentColor" opacity="0.85">K = (amp_mv × 143165) &gt;&gt;&gt; 16（mV→LSB），三种波形共用同一乘法通路（DSP48）</text>
   <text x="6" y="288" font-size="11" fill="currentColor" opacity="0.85">采样点数 = 100 kSPS / freq：1 kHz → 100 点/周期（平滑）；10 kHz → 10 点（折线）</text>
   <text x="6" y="310" font-size="11" fill="currentColor" opacity="0.85">最终 code[15:0] 交给 dac8871_master 组装成串行帧送出</text>
@@ -458,7 +437,7 @@ module dac8871_master #(
 )(
 ```
 
-> 隔离器延时（与 experiment4 的 ADC 经验一致）：SCK 与 SDI 各穿过 IL715 的一个通道（约 10~20 ns）。本模块让 SDI 在 SCK 下降沿更新（距下一个上升沿半周期 = 40 ns），两个通道延时近似相等、只有时延差（skew）会侵蚀建立裕量，故 SCK=12.5 MHz 时仍有约 20~30 ns 裕量。如实测波形异常，加大 `SCK_DIV`（16、32）即可。
+> 隔离器延时（与 experiment4 的 ADC 经验一致）：SCK 与 SDI 各穿过 IL715 的一个通道（约 10~20 ns）。本模块让 SDI 在 SCK 下降沿更新（距下一个上升沿半周期 = 40 ns），两个通道延时近似相等、只有时延差（skew）会侵蚀建立裕量，故 SCK=12.5 MHz 时仍有约 20~30 ns 裕量。如实测波形异常，加大 `SCK_DIV`（如 16），并核对相位计数位宽与新帧长。
 
 ### 波形发生：`wave_gen.v`
 
@@ -470,7 +449,7 @@ module dac8871_master #(
 //   1 正弦  ：w = LUT[phase[31:20]] = 32767*sin(2πk/4096)
 //   2 方波  ：w = ±32767（前半周期 +，后半周期 −）
 //   3 三角  ：w = 由相位折叠出的 0..4095 三角波 × 16 − 16376)×2 ≈ ±32752
-//   交流模式：code = 32768 + (w x K) >>> 15 ,  K = amp_mv x 2.18453（LSB）
+//   交流模式：code = 32768 + ((w x K) >>> 15) ,  K = amp_mv x 2.18453（LSB）
 ```
 
 相位累加与三种波形的取数方式，全部在一个 `tick` 上更新：
@@ -552,9 +531,9 @@ end
 
 三个设计细节值得单独点出来：
 
-- **方波不用查表**：只取 `phase[31]` 就能得到精确 50% 占空比，没有量化误差；
-- **三角波每半周期 2048 级**：`tri_pos` 只有 11 位（`phase[30:20]`），所以原始幅度是 ±32752 而不是 ±32767，这正是"三角波峰峰值比正弦/方波小 20 LSB"的来源；
-- **一个乘法器搞定所有幅度**：`K = (amp_mv × 143165) >>> 16` 把 mV 变成 LSB，之后三种波形共用 `(w × K) >>> 15`，综合出来就是一个 DSP48。
+- **方波不用查表**：`phase[31]` 划分两个等长相位区间，长期平均占空比为 50%；边沿仍量化到 10 µs 更新网格，单个周期的高低拍数可能不同；
+- **三角波每半周期 2048 级**：`tri_pos` 只有 11 位（`phase[30:20]`），所以原始幅度是 ±32752 而不是 ±32767，这正是"amp=10000 时三角波峰峰值比正弦/方波小 20 LSB"的来源；
+- **交流波形共用幅度乘法通路**：`K = (amp_mv × 143165) >>> 16` 把 mV 变成 LSB，三种波形共用 `(w × K) >>> 15`。还需计入幅度与直流换算的乘法，后面的综合记录为共 3 个 DSP48，不能把整机说成只有一个乘法器。
 
 ### 查表：`sine_lut.v`
 
@@ -584,7 +563,7 @@ module sine_lut #(
             // …… 共 4096 项，此处省略 ……
 ```
 
-起始几项正好可以当正确性自检：`sin(2π/4096) × 32767 ≈ 50.27 → 0x32 = 50`，`k=2` 时约 100.5 → 0x65 = 101，和文件里一致。整个文件 4118 行，4096 项加注释——**所以"勿手改"不是客套话**，要改就用脚本站重新生成。
+起始几项正好可以当正确性自检：`sin(2π/4096) × 32767 ≈ 50.27 → 0x32 = 50`，`k=2` 时约 100.5 → 0x65 = 101，和文件里一致。整个文件 4118 行，4096 项加注释——**所以"勿手改"不是客套话**，要改就用脚本重新生成。
 
 ### 数据通路：`da_core.v` 与 `da_output_top.v`
 
@@ -757,7 +736,7 @@ set_property -dict {PACKAGE_PIN AC21 IOSTANDARD LVCMOS33} [get_ports led_mode]
 ### 电平标准的依据
 
 - Bank 13（DAC/LED）：VADJ 默认 3.3V → `LVCMOS33`；
-- C8（Bank 34 MRCC）：核心板手册标 1.35/1.5V → `SSTL135`（与 experiment1~4 一致；**若 Vivado 报 IOSTANDARD DRC，改 `LVCMOS33` 即可**，两种供电下都能识别）。
+- C8（Bank 34 MRCC）：本工程记录使用 `SSTL135`。继电器工程对 C8 使用了 `LVCMOS33`，实际标准需按核心板版本、Bank 供电、VREF 要求与时钟电平核对，不能仅为消除 DRC 改标准。
 
 ### 输出链路与物理端子
 
@@ -767,7 +746,7 @@ FPGA(AE25/AE26/AF24) ──> IL715 数字隔离器 ──> DAC8871 ──> OPA20
 ```
 
 - **DAC8871**（U5_D1）：16 位串行 DAC，VREFHF/VREFHS=ISO+15V，VREFLF/VREFLH=ISO−15V → 输出满量程理论 ±15V；RSTSEL/RST_N 拉高（上电复位到中码 0V）；LDAC_N 接地（CS 上升沿立即更新输出）。
-- **IL715**（U6_D1）：数字隔离。⚠ 原理图 Comment=IL715、LibReference=IL716 存在**器件信息冲突**（ad_da_analysis.md P1 问题）。按 PCB 网络设计意图为四通道同向（系统侧→隔离侧）传输，本实验按此使用；若上板后发现"码值在变、输出完全不动"，优先排查该隔离器实际贴片型号 / 方向（见「常见问题排查」）。
+- **IL715**（U6_D1）：数字隔离。⚠ 原理图 Comment=IL715、LibReference=IL716 存在**器件信息冲突**，实际贴片型号仍待核对。按 PCB 网络设计意图为四通道同向（系统侧→隔离侧）传输，本实验按此使用；若上板后发现"码值在变、输出完全不动"，优先排查该隔离器实际贴片型号 / 方向（见「常见问题排查」）。
 - **隔离电源**：A1215S 从 VCC12V 产生 ISO±15V（本通道隔离地 ISO_GND_D1，与其它通道、数字地均隔离）→ 输出电压以 −OUT1（隔离地）为参考。
 
 模拟输出物理端子在 **SCSI2（26 针）**：
@@ -808,7 +787,7 @@ experiment5_da_output/
 ├── docs/
 │   ├── pinmap.md           # 管脚推导记录（沿用 experiment4 三方核对结论）
 │   └── measure_template.md # ★ 测量记录表（上板后填）
-└── README.md               # 本文件
+└── README.md               # 原实验工程说明
 ```
 
 一键仿真（**全部 PASS 才继续上板**）：
@@ -821,7 +800,7 @@ cd sim
 
 三个测试平台各自验证什么，下面这张表可以直接引用到报告的"仿真证据"一节：
 
-| 测试 | 验证点 | 本机结果 |
+| 测试 | 验证点 | 既有仿真记录 |
 |---|---|---|
 | tb_dac8871_master | 每帧恰好 16 个 SCK 上升沿；码值无差错；vout=−15000+30000×code/65536 精确换算；tLead/tLag/tTD/tSU/tSCK/tWSCK 全部 0 违例 | **PASS**（6 帧） |
 | tb_wave_gen | DC 换算 9 点精确（含 ±15000 钳位）；正弦 300 点 vs 独立数学模型 ±2LSB；方波/三角逐点一致；周期 100±1 拍；三角峰峰值 43669 LSB（理论值精确命中：顶 54602/底 10933）；freq>20000 钳位 | **PASS** |
@@ -877,7 +856,7 @@ vivado -mode batch -source scripts\build_bitstream.tcl
 | 正弦/方波/三角 Vpp | 20.0 V（amp=10000 时） | 未记录 |
 | 三角波峰峰值 | 比正弦/方波小 20 LSB ≈ 9 mV（折叠式三角原始幅度 ±32752、正弦/方波 ±32767，经 K=21845 缩放后每边差 10） | 未记录 |
 | 周期 | 1 kHz → 1.000 ms（±8 ppm） | 未记录 |
-| 方波占空比 | 精确 50% | 未记录 |
+| 方波占空比 | 长期平均 50%，单周期受更新网格量化 | 未记录 |
 | DAC 更新率 | 100 kSPS（台阶间隔 10 µs） | 未记录 |
 | 满码 ±15V | 理论 +14.9995/−15.0000 V；**实际可能削顶**（见下文 6.4） | 未记录 |
 
@@ -891,7 +870,7 @@ vivado -mode batch -source scripts\build_bitstream.tcl
 
 ### 6.2 码值在变、输出完全不动（隔离器方向风险）
 
-原理图上 D1 通道隔离器存在 **IL715/IL716 标识冲突**（ad_da_analysis.md P1）：LibReference 是 IL716（双向型），设计意图按 PCB 网络是 IL715（同向）。若本板实际贴的是 IL716 且方向不符，SCK/SDI 无法从 FPGA 侧送达 DAC——现象就是"code_now 在变、输出纹丝不动"。
+原理图上 D1 通道隔离器存在 **IL715/IL716 标识冲突**：LibReference 是 IL716（双向型），设计意图按 PCB 网络是 IL715（同向）。若本板实际贴的是 IL716 且方向不符，SCK/SDI 无法从 FPGA 侧送达 DAC——现象就是"code_now 在变、输出纹丝不动"。
 
 排查：示波器看 AE26(SCK)/AF24(SDI) 有无波形；有波形而 DAC 不响应则方向不符，属硬件问题（可换用 D2 通道验证：把顶层/XDC 换成 DA_CSN2/DA_SCK2/DA_SDI2 = AF25/AD23/AD24，端子 SCSI2 9/10）。
 
@@ -901,11 +880,11 @@ vivado -mode batch -source scripts\build_bitstream.tcl
 
 ### 6.4 ±15V 两端削顶
 
-DAC8871 的参考就是隔离电源 ISO±15V，且 OPA207 输出摆幅到不了电源轨：满码时输出停在约 ±13.5~14.5V 属正常。把实测最大摆幅记入测量表 1 并讨论（这也是"精密 DA 需要独立基准"的工程教训，ad_da_analysis.md P1 同样结论）。
+DAC8871 的参考就是隔离电源 ISO±15V，且 OPA207 输出摆幅到不了电源轨：满码时输出停在约 ±13.5~14.5V 属正常。把实测最大摆幅记入测量表 1 并讨论（精密输出需要把参考误差与输出摆幅分别计入）。
 
 ### 6.5 Vivado 报 IOSTANDARD DRC
 
-C8 的 SSTL135 改成 LVCMOS33（见 constraints 注释），其余不用动。
+先核对核心板版本、Bank 34 的 VCCO/VREF 和时钟幅度，再选择与硬件匹配的 IOSTANDARD；DRC 通过不代替电气兼容验证。
 
 ## 报告要点
 
@@ -917,7 +896,7 @@ C8 的 SSTL135 改成 LVCMOS33（见 constraints 注释），其余不用动。
 6. **误差分析**：满量程削顶、±1 LSB 取整不对称、隔离电源波动、示波器精度；
 7. **思考题**（任选二）：
    - 想把输出频率提高到 100 kHz 需要改什么？瓶颈依次是什么（SPI 帧长 1.36 µs、DAC 建立时间 ~1 µs、每周期点数）？
-   - 为什么方波占空比能精确 50%，而不用查表？
+   - 为什么方波的相位区间能均分为两半，而不用查表？
    - 若要输出任意波形（如心电波形），本框架怎么扩展？
 
 ## 参数速查表
@@ -972,7 +951,7 @@ node scripts/gen_sine_lut.js
 两个值得记下的点：
 
 - **负数必须转补码再输出**：JS 里 `(-50).toString(16)` 会得到 `"-32"`，不是合法的 Verilog 字面量。所以脚本先 `v & 0xffff` 取 16 位补码，再 `padStart(4,'0')`——这是**踩过的坑**之一（见文末）。
-- **综合结果是一张分布式 ROM**：整张表落在 LUT 资源里，本工程 BRAM = 0。要省 LUT 可以加 `(* rom_style = "block" *)` 强制进 BRAM（2 块 36Kb 就够）。
+- **综合结果是一张分布式 ROM**：整张表落在 LUT 资源里，本工程 BRAM = 0。要转为 BRAM，应采用目标器件支持的同步 ROM 读出模板，并调整流水线与有效信号；仅给当前组合 `case` 加属性，不能保证推断为块 RAM。容量上约需两块 36 Kb BRAM。
 
 表项的精度也值得算一笔：相位截断（floor 取地址）误差最多 1 个表项 = 2π/4096 rad，在最陡处折成幅度误差 ≤ 32767×2π/4096 ≈ **50 LSB ≈ 23 mV（−56 dB 最坏瞬时）**——远小于隔离电源本身的噪声，所以 4096 点 / 16 位的组合是够用的。
 
@@ -1002,7 +981,7 @@ VIO：`mode=0`，`dc_mv` 按第 1 列设置。理论值按 Vout = −15V + 30V×
 | −5000 | | −5.000 | | | | |
 | +10000 | | +10.000 | | | | |
 | −10000 | | −10.000 | | | | |
-| +15000 | | +15.000 | | | | 观察是否削顶（记录实际峰值） |
+| +15000 | | +14.9995 | | | | 观察是否削顶（记录实际峰值） |
 | −15000 | | −15.000 | | | | 同上 |
 
 **结论记录**：满量程两端是否达到 ±15V？若削顶，实际可达 ±____V。
@@ -1046,7 +1025,7 @@ VIO：`mode=2`，`freq_hz=1000`，`amp_mv=10000`。
 | 占空比 (%) | 50 | | |
 | 上升时间 | — | | 10~90%，记录示波器读数 |
 
-**观察记录**：DAC 每隔 10 µs 更新一次，方波边沿实际由一拍（10 µs 台阶）构成，上升时间约 ____ µs（对应 100 kSPS 更新率的量化，属正常现象）。
+**观察记录**：DAC 每隔 10 µs 更新一次，边沿发生时刻只能落在 10 µs 更新网格上；**模拟上升时间不等于 10 µs**，还取决于 DAC 建立、运放压摆率、带宽与负载。记录 10%→90% 上升时间：____ µs。
 
 ### 表 4：三角波（mode=3）
 
@@ -1074,7 +1053,7 @@ VIO：`mode=3`，`freq_hz=1000`，`amp_mv=10000`。
 
 1. 实测电压与理论值的偏差来源：隔离电源 ISO±15V 的实际值（可用万用表在 +OUT1 与 −OUT1 间测满码输出反推）、DAC 满量程误差、示波器精度；
 2. 直流档实测 vs 万用表实测的差异说明了什么（两种仪器的精度/负载效应）；
-3. 方波上升时间为什么是 ~10 µs 量级（更新率量化），怎样减小（提高 UPDATE_HZ？受限于什么——SPI 帧长 1.36 µs 与 DAC 建立时间）；
+3. 区分 10 µs 更新间隔、边沿时刻量化与模拟上升时间；分别讨论提高更新率和改善输出级带宽能解决哪类限制；
 4. 正弦 10 kHz 时的折线现象（每周期 10 点）与奈奎斯特/重建滤波的关系。
 
 ## 附：DAC 输出级电路原理
@@ -1098,20 +1077,20 @@ DAC8871 VOUT ──► OPA207 跟随器（R10=6.2k 在反馈路径）──► +
 VOUT = VREFL + (VREFH − VREFL) × Code / 65536     （DAC8871 手册公式 1）
 ```
 
-本板 VREFH/VREFL = 隔离电源 ISO±15V：0x0000 → **−15.0000 V**，0x8000 → **0.0000 V**，0xFFFF → **+14.9995 V**；**1 LSB = 30000 mV/65536 = 0.4578 mV**（手册 ±10V 量程举例为 305 µV，同比例）；例 0x9FFF（40959）→ **+3.7504 V**。满码 0xFFFF 到不了 +15V：台阶共 65536 个间隔，最大码只走完 65535/65536。
+本板 VREFH/VREFL = 隔离电源 ISO±15V：0x0000 → **−15.0000 V**，0x8000 → **0.0000 V**，0xFFFF → **+14.9995 V**；**1 LSB = 30000 mV/65536 = 0.4578 mV**（手册 ±10V 量程举例为 305 µV，同比例）；例 0x9FFF（40959）→ **+3.7495 V**。满码 0xFFFF 到不了 +15V：台阶共 65536 个间隔，最大码只走完 65535/65536。
 
 DAC8871 的码值是**偏移二进制**（0 在中码 0x8000），experiment4 里 LTC2328 输出的是**二补码**（0 在 0x0000）：最负 0x0000 / 0x8000，零点 0x8000 / 0x0000，最正 0xFFFF / 0x7FFF。换算只需**取反最高位**：`偏移二进制 = 二补码 ^ 0x8000`；DAC 天生偏移二进制，因为 R-2R 本质是"无符号比例分配器"，0V 自然落在中码。
 
 ### 内部结构：高 4 位分段 + 低 12 位 R-2R
 
-- 用电阻串分压做 16 位需要 65536 个电阻、阻值跨度 65536:1，不可能制造；R-2R 只用 **R 和 2R 两种阻值** 实现二进制加权，每个节点向右看的等效电阻都是 2R，权重逐级减半——**拓扑自己实现了二进制，与阻值绝对精度无关**，只要求 R 和 2R 匹配。
+- 纯等值电阻串实现 16 位通常需要约 65536 个单元与相应抽头，面积和开关网络代价很高；它并不要求电阻阻值跨度为 65536:1。R-2R 只用 **R 和 2R 两种阻值** 实现二进制加权，每个节点向右看的等效电阻都是 2R，权重逐级减半——**拓扑自己实现了二进制，与阻值绝对精度无关**，只要求 R 和 2R 匹配。
 - 手册 Figure 38：**高 4 位译码驱动 15 个开关（E1~E15），每个开关把 15 个匹配电阻之一接到 VREFH 或 VREFL；低 12 位驱动 12 位电压模式 R-2R 梯形（S0~S11）**。不全用 R-2R 的原因：16 位纯 R-2R 里 MSB 支臂电流是 LSB 的 32768 倍，匹配要求极高（INL/DNL 恶化）；高位改成 15 个等值电阻段后最易做准，且开关动作分散、glitch 更小、单调性更好。
 
 ### 三个容易踩的坑
 
-- **输出不缓冲，阻抗 6.2 kΩ**。手册原文："The output of the DAC8871 is unbuffered. The output impedance is approximately 6.2kΩ." 按分压 V_负载 = V × RL/(6.2kΩ+RL)：1 kΩ → 1/7.2 ≈ **13.9%**（损失 86%，完全不可用）；1 MΩ（×1 探头/万用表）→ ≈99.38%，误差 ≈**185 mV ≈ 403 LSB**；10 MΩ（×10 探头）→ ≈99.94%，误差 ≈**18.6 mV ≈ 41 LSB**。连 10 MΩ 探头都带来 41 LSB 增益误差，16 位系统必须缓冲；手册 Figure 39 推荐 OPA277/OPA211，本板用同家族 OPA207。
-- **参考就是精度天花板**。参考直接乘进输出、**没有任何衰减**，本板参考就是 A1215S 隔离电源的输出：偏 1%（150 mV）→ 满码偏 ≈150 mV ≈ **328 LSB**；纹波/噪声 20 mV → 输出叠 20 mV ≈ **44 LSB**；温漂 100 ppm/℃ → 30 V 摆幅漂 3 mV/℃ ≈ **6.6 LSB/℃**。号称 16 位（65536 级），**有效分辨率可能只有 10~12 位**——不是 DAC8871 的错（芯片本身 INL 很小），是"参考无独立基准"的系统取舍（与 `ad_da_analysis.md` P1 结论一致）；标准做法是独立 ±10V 精密基准（REF01/ADR 系列）或至少二次稳压。
-- **Force/Sense 未做开尔文布线**。VREFHF/VREFHS、VREFLF/VREFLS 本应把 sense 接到参考源感测点做开尔文补偿，**本板把 F 和 S 都接到同一个 ISO±15V 网络**，走线压降没有被补偿。影响小，但写报告是好素材。
+- **输出不缓冲，阻抗 6.2 kΩ**。按 DAC8871 手册，输出未缓冲、输出阻抗约 6.2 kΩ。 按分压 V_负载 = V × RL/(6.2kΩ+RL)：1 kΩ → 1/7.2 ≈ **13.9%**（损失 86%，完全不可用）；1 MΩ（×1 探头/万用表）→ ≈99.38%，误差 ≈**185 mV ≈ 403 LSB**；10 MΩ（×10 探头）→ ≈99.94%，误差 ≈**18.6 mV ≈ 41 LSB**。连 10 MΩ 探头都带来 41 LSB 增益误差，16 位系统必须缓冲；手册 Figure 39 推荐 OPA277/OPA211，本板用同家族 OPA207。
+- **参考误差直接影响输出**。输出按码值对高低参考加权，参考噪声与偏差都会耦合到结果，本板参考就是 A1215S 隔离电源的输出：偏 1%（150 mV）→ 满码偏 ≈150 mV ≈ **328 LSB**；纹波/噪声 20 mV → 输出叠 20 mV ≈ **44 LSB**；温漂 100 ppm/℃ → 30 V 摆幅漂 3 mV/℃ ≈ **6.6 LSB/℃**。号称 16 位（65536 级），**系统有效精度需要根据实际噪声与误差测量，不能直接等同于标称 16 位**——不是 DAC8871 的错（芯片本身 INL 很小），是"参考无独立基准"的系统取舍；标准做法是独立 ±10V 精密基准（REF01/ADR 系列）或至少二次稳压。
+- **Force/Sense 布线待核对**。原理图中 Force 与 Sense 同属 ISO±15V 网络，单凭网络名不能判断 PCB 是否采用开尔文走线；应结合版图上的实际分支和连接点评估走线压降。
 
 ### 数字接口：四条铁律、三级结构、上电安全态
 
@@ -1126,16 +1105,16 @@ DAC8871 的码值是**偏移二进制**（0 在中码 0x8000），experiment4 �
 - 四个模拟通道（A1/A2/D1/D2）不仅与数字侧隔离，**彼此之间也隔离**（各自的 ISO_GND 互不相连）：掐断工业现场的共模电压/地环流，也避免通道间串扰；代价是每通道一套独立隔离电源 + 隔离器，成本高、精度受限。
 - **A1215S**：输入系统 VCC12V，输出**通道独立**的 ISO+15V/ISO−15V/ISO_GND。它身兼两职：给 DAC 梯形供电的 ±15V 模拟电源 + **被直接当作参考电压**（后者是精度短板）。
 - **L78L05**：从 ISO+15V 线性降压出 ISO+5V，给 DAC 的数字部分（VDD）和隔离器隔离侧供电；不用 DC/DC 直接出 5V，因为线性稳压纹波小。**R9=10Ω + 本地电容** 串在 ISO+5V → ISO+5V1 之间构成低通，隔离器的开关瞬态尖峰被电阻"消化"，不倒灌进 DAC 数字电源。
-- **IL715 数字隔离器**：输入信号先编码，经片内耦合元件跨过绝缘势垒再解码还原；相比光耦速度快（10~50 Mbps vs 1 Mbps）、寿命长（无光衰）、功耗低。选型四要素：**通道数、方向组合、速率、耐压**。DAC 通道需 3 根同向线 → 全同向的 IL715；ADC 通道 2 去 2 回 → 双向组合的 IL716。⚠ 原理图上 U6_D1 的 Comment=IL715 但 LibReference=IL716（符号引脚按双向画），即 `ad_da_analysis.md` 里的 P1 冲突；若实物是 IL716 且方向装反，SCK/SDI 到不了 DAC（"码值变、输出不动"的排查预案即源于此）。
+- **IL715 数字隔离器**：输入信号先编码，经片内耦合元件跨过绝缘势垒再解码还原；相比光耦速度快（10~50 Mbps vs 1 Mbps）、寿命长（无光衰）、功耗低。选型四要素：**通道数、方向组合、速率、耐压**。DAC 通道需 3 根同向线 → 全同向的 IL715；ADC 通道 2 去 2 回 → 双向组合的 IL716。⚠ 原理图上 U6_D1 的 Comment=IL715 但 LibReference=IL716（符号引脚按双向画），实际贴片型号与方向仍待核对；若实物是 IL716 且方向装反，SCK/SDI 到不了 DAC（"码值变、输出不动"的排查预案即源于此）。
 - **OPA207 跟随器**：DAC 输出不缓冲，跟随器输入阻抗极高（几乎不分走电压）、输出阻抗极低，**增益严格为 1**。**R10=6.2k 在反馈路径上不改变增益**（虚短虚断，闭环增益仍是 1），作用是隔离输出与反相输入节点、改善容性负载稳定性，兼有限流保护意义；数值恰与 DAC 输出阻抗相同（与手册 Figure 39 推荐电路同款，那里用 OPA277/OPA211）。手册对外部运放的要求：低失调（1 LSB=305 µV@±10V 量程）、低偏置电流（Ib×6.25 kΩ 直接加到零码误差）、轨到轨输出、带宽 ≥1 MHz、压摆率不能拖慢建立时间。**摆幅限制**：±15V 供电下输出典型只到 ±13.5~14.5V（到不了电源轨），这是"±15V 满码会削顶"的直接原因。
 
 ### 工程弱点清单与易错点
 
-1. 参考无独立基准：精度/噪声被 A1215S 限制（有效位数 ~10-12 位）；
-2. Force/Sense 未做开尔文布线：走线压降未补偿；
+1. 参考无独立基准：精度/噪声被 A1215S 限制（系统有效位数未实测）；
+2. Force/Sense 是否采用开尔文布线：需结合 PCB 版图确认；
 3. IL715/IL716 器件标识冲突：贴片方向/型号存疑，需上板验证；
 4. 无输出保护：无串联限流、无 TVS，短路/静电有风险；
-5. 满码 ±15V 削顶：受 OPA207 摆幅与电源限制，实测 ±13.5~14.5V 上下。
+5. 满码 ±15V 削顶：受 OPA207 摆幅与电源限制，约 ±13.5~14.5V 仅为摆幅量级参考，实际值未记录。
 
 易错点：把 LDAC_N 从接地改为 FPGA 控制，即可让多片 DAC 各自 CS↑ 装好数据后共用一根 LDAC↓ 同时跳变，实现同步输出；R-2R 的终端电阻若开路，节点阻抗匹配被破坏，低位权重不再是严格的二进制（原 2 位例子的 LSB 不再是 VREF/4）；输出 20 mV@100 kHz 纹波最可能来自隔离电源纹波直接进参考 → 输出，可在 ISO±15V 上直接探测、或断开负载/换通道对比验证；做"ADC 采到什么 DAC 就输出什么"的直通系统，码值需 `code_dac = code_adc ^ 0x8000`。
 
@@ -1143,7 +1122,7 @@ DAC8871 的码值是**偏移二进制**（0 在中码 0x8000），experiment4 �
 
 > 依据 `rtl/dac8871_master.v` 逐拍推演 + 手册（SBAS396A）+ 仿真（tb_dac8871_master 6 帧 PASS，时序检查 0 违例）。拍数/纳秒数均手工推演并与仿真一致。
 
-**勘误**：上一课"6.2kΩ 接 1kΩ 负载只剩 86%"方向反了，分压应为 V×RL/(6.2k+RL)=1/7.2≈**13.9%**（损失 86%）；连 10MΩ 的 ×10 探头都引入 30V×6.2/10006.2≈18.6mV≈**41 LSB** 误差——16 位输出必须缓冲。讲义 01 与 README/注释三处拍数已订正：**tLead=50ns、tLag=110ns、tTD=8640ns**。
+**负载分压复核**：6.2 kΩ 输出阻抗接 1 kΩ 负载，分压为 V×RL/(6.2k+RL)=1/7.2≈**13.9%**（损失 86%）；连 10MΩ 的 ×10 探头都引入 30V×6.2/10006.2≈18.6mV≈**41 LSB** 误差——16 位输出必须缓冲。按下文边沿时间线计算：**tLead=50ns、tLag=110ns、tTD=8640ns**。
 
 **四条铁律 → 设计决策**
 
@@ -1156,7 +1135,7 @@ DAC8871 的码值是**偏移二进制**（0 在中码 0x8000），experiment4 �
 
 **接口与参数**：`load`（单拍脉冲）+ `data[15:0]` → `dac_csn`/`dac_sck`/`dac_sdi`，另有 `busy`、`code_now[15:0]`。参数 CLK_HZ=100MHz、SCK_DIV=8（SCK=12.5MHz）、LEAD_CYC=4、LAG_CYC=4。
 
-**参数合同：SCK_DIV 必须是 ≥4 的偶数**——SCK_DIV=2 时 PHASE_HALF=1 与 PHASE_LAST=1 撞在同一拍（SCK 又拉高又拉低，后者覆盖前者，波形直接坏）；奇数分频则高低电平不对称。
+**参数范围：当前 4 位 phase 对应 SCK_DIV 为 4~16 的偶数，更大分频须扩展位宽**——SCK_DIV=2 时 PHASE_HALF=1 与 PHASE_LAST=1 撞在同一拍（SCK 又拉高又拉低，后者覆盖前者，波形直接坏）；奇数分频则高低电平不对称。
 
 ```text
  S_IDLE ─load─► S_LEAD ─4拍─► S_SHIFT ─16位×8拍─► S_LAG ─4拍─► 回 S_IDLE
@@ -1167,7 +1146,7 @@ DAC8871 的码值是**偏移二进制**（0 在中码 0x8000），experiment4 �
 
 ### 容易踩的坑
 
-1. **状态时长 ≠ 信号间隔（最常踩）**：S_LEAD 占 4 拍，但 tLead（CS↓→首个 SCK↑）= **5 拍 = 50ns**，因为进 S_SHIFT 后还要 1 拍才执行 `phase==0` 的 `sck<=1`；文档原先也写错过（40ns）。同理 S_LAG 占 4 拍，tLag（第 16 个 SCK↑→CS↑）= 位槽剩余 4 + 相位收尾 3 + LAG 4 = **11 拍 = 110ns**。画边沿图是唯一可靠的核对办法。
+1. **状态时长 ≠ 信号间隔（最常踩）**：S_LEAD 占 4 拍，但 tLead（CS↓→首个 SCK↑）= **5 拍 = 50ns**，因为进 S_SHIFT 后还要 1 拍才执行 `phase==0` 的 `sck<=1`；不要直接把状态占用的 4 拍当作该信号间隔。同理 S_LAG 占 4 拍，tLag（第 16 个 SCK↑→CS↑）= 位槽剩余 4 + 相位收尾 3 + LAG 4 = **11 拍 = 110ns**。画边沿图是唯一可靠的核对办法。
 2. **半周期换数**：SDI 在 SCK↓（phase 4）换，下个 SCK↑ 在 4 拍 = 40ns 之后。若上升沿同拍换数，FPGA 侧建立≈0，SCK 与 SDI 两路 IL715 的延时差（skew 5~10ns）直接吃掉裕量；半周期换数扣掉 skew 后净裕量仍有 ~30ns ≥ tSU 10ns。
 3. **NBA 读旧值**：`dac_sdi <= shreg[14]` 与 `shreg <= {shreg[14:0],1'b0}` 同拍时右侧读移位前的值，摆出的正是"下一位"；改阻塞赋值且顺序写反就差一位，整帧错乱。
 4. **`bit_cnt < 16` 封门**：第 16 个↑ 后还有一次↓，无保护会做第 17 次移位、把垃圾摆上 SDI。
@@ -1200,13 +1179,13 @@ T136  │ CS↑ —— DAC 输出更新为 +4.9997V   ← tLag = 110ns
 | tLag | 10 ns | 110 ns | 11× |
 | tTD（帧间 CS 高） | 30 ns | 8640 ns | 288× |
 
-**与 da_core 的配合比**：tick 自由运行（每 1000 拍 = 10µs 一拍），不从属于帧完成，更新率才精确等于 100 kSPS，f=fstep×100k/2³² 才成立。帧长 136 拍 << 1000 拍，下一拍 load 时帧早已发完（空闲 864ns），"忙时装载被丢弃"在这组参数下永不发生；若 UPDATE_HZ 提到 500 kSPS（周期 200 拍 > 136 拍仍勉强），必须"忙时缓存一帧"（一级 skid buffer）或让 load 等 busy 释放。
+**与 da_core 的配合比**：tick 自由运行（每 1000 拍 = 10µs 一拍），不从属于帧完成，更新率才精确等于 100 kSPS，f=fstep×100k/2³² 才成立。帧长 136 拍 << 1000 拍，下一拍 load 时帧早已发完（空闲 8640ns），"忙时装载被丢弃"在这组参数下永不发生；若 UPDATE_HZ 提到 500 kSPS（周期 200 拍 > 136 拍仍勉强），必须"忙时缓存一帧"（一级 skid buffer）或让 load 等 busy 释放。
 
 **验证的可追溯性**：`tb/dac8871_model.v` 的 8 个错误码逐条对应手册参数（仿真不是"看起来对"，而是每项规格有独立断言）——① 帧间 CS 高 <30ns = tTD；② CS↓ 距上次 SCK 活动太近 = tDelay；③ CS↑ 时锁存位数 ≠16 = 铁律③；④ 第 16 个 SCK↑→CS↑ <10ns = tLag；⑤ 帧内 SCK 周期 <20ns = tSCK；⑥ SCK↑ 前 SDI 稳定 <10ns = tSU；⑦ SCK 高电平 <10ns = tWSCK；⑧ CS↓→首个 SCK↑ <10ns = tLead。tb_dac8871_master 另独立数每帧 SCK↑ 个数（=16）、核对码值与 vout=−15000+30000×code/65536 换算。
 
 ## 附：DDS 与波表是怎么算出来的
 
-> 整理自讲义 03；依据 `rtl/wave_gen.v` 实际代码 + 仿真逐点验证（tb_wave_gen PASS）。数值均手工核算并与仿真打印对账。
+> 依据 `rtl/wave_gen.v` 实际代码 + 仿真逐点验证（tb_wave_gen PASS）。数值均手工核算并与仿真打印对账。
 
 ### DDS 核心与输出频率
 
@@ -1229,9 +1208,9 @@ w    = LUT[addr]           // = round(32767·sin(2π·addr/4096))，16 位有符
 ```
 
 - 表 4096×16bit = 64Kbit；相位截断（floor 取地址）误差最多 1 个表项 = 2π/4096 rad，最陡处折成幅度误差 ≤ 32767×2π/4096 ≈ **50 LSB ≈ 23 mV**（−56 dB 最坏瞬时）；
-- 生成脚本 `scripts/gen_sine_lut.js`：`Math.round(32767*Math.sin(2πk/4096))`，负数用 `(v&0xffff).toString(16)` 转补码十六进制；综合后整张表进分布式 ROM，本工程 **BRAM=0**，要省 LUT 可加 `(* rom_style = "block" *)`（2 块 36Kb 够）。
+- 生成脚本 `scripts/gen_sine_lut.js`：`Math.round(32767*Math.sin(2πk/4096))`，负数用 `(v&0xffff).toString(16)` 转补码十六进制；综合后整张表进分布式 ROM，本工程 **BRAM=0**，要转为 BRAM 需改成支持的同步读出模板，并相应调整延迟；不能只靠属性强制当前组合 `case` 进 BRAM（容量约两块 36 Kb）。
 
-**② 方波：最高位** — `w_sq = phase[31] ? -16'sd32767 : 16'sd32767`。phase[31]=1 精确覆盖相位区间的一半，采样意义上占空比严格 50%；代价是边沿时刻被量化到 10µs 网格。
+**② 方波：最高位** — `w_sq = phase[31] ? -16'sd32767 : 16'sd32767`。phase[31]=1 覆盖相位区间的一半，因此长期平均占空比为 50%；单周期高低拍数仍受离散更新影响，边沿时刻量化到 10µs 网格。
 
 **③ 三角波：折叠**
 
@@ -1271,7 +1250,7 @@ wire signed [15:0] w_tri = ($signed({1'b0, tri_pos, 4'b0}) - 16'sd16376) <<< 1;
 
 ## 踩过的坑
 
-这个实验的电路不算复杂，坑几乎全在**数字的精确性**上。下面这些是真实记录下来的（都已在讲义里订正）：
+这个实验的电路不算复杂，坑几乎全在**数字的精确性**上。下面这些是真实记录下来的：
 
 1. **心算近似没和仿真对账**：三角波峰峰值先写成 43683 LSB，实际是 **43669**（顶 54602 / 底 10933）；0xAAAA 的输出先写成 +5.0001V，实际是 **+4.9997V**；−10V 行写成 −10.0000V，实际是 **−10.0003V**。教训是"数字必须过两遍：手算一遍、和仿真打印对一遍"。
 2. **"状态时长"和"信号间隔"差 1 拍**：`S_LEAD` 状态只占 4 拍，但从 CS↓ 到首个 SCK↑ 是 **5 拍 = 50ns**（进 S_SHIFT 后还要 1 拍才拉高 SCK）；`S_LAG` 同理占 4 拍，tLag 却是 **11 拍 = 110ns**。文档里一度写成 40ns，逐拍推演才订正——**画边沿图是唯一可靠的核对办法**。
@@ -1279,12 +1258,12 @@ wire signed [15:0] w_tri = ($signed({1'b0, tri_pos, 4'b0}) - 16'sd16376) <<< 1;
 4. **参考模型漏了"看起来无关紧要"的行为**：第一版 tb_wave_gen 每个测试都把相位模型清零，而 RTL 的相位是跨测试连续累计的（DC 模式下相位照样在走）→ 全线 FAIL，一度怀疑 RTL 写错了。**先读实现的行为语义，再写模型。**
 5. **JS 负数转十六进制**：`(-50).toString(16)` 得到的是 `"-32"`，不是合法 Verilog 字面量。生成脚本里必须 `(v & 0xffff).toString(16).padStart(4,'0')`。
 6. **别拿 DUT 代码当期望值**：正弦的 TB 模型用实数 `$sin` 现算（而不是把 LUT 抄一遍），方波/三角用另一套表达式推导——两套独立推导对上 ±2 LSB，才算真验证。
-7. **"忙时丢弃 load"是设计约束，不是碰巧**：帧长 136 拍、节拍 1000 拍，空闲 864ns，所以丢弃策略在本参数组下永远不会触发。这个约束写在参数里，改 UPDATE_HZ 之前必须先算配合比。
+7. **"忙时丢弃 load"是设计约束，不是碰巧**：帧长 136 拍、节拍 1000 拍，空闲 8640ns，所以丢弃策略在本参数组下永远不会触发。这个约束写在参数里，改 UPDATE_HZ 之前必须先算配合比。
 
 ### 下一步可以做的
 
 - 把 `UPDATE_HZ` 往上提（先算帧长与节拍的配合比，必要时给 `dac8871_master` 加一级 skid buffer）；
-- 在输出端加**重建滤波器**（对付 99 kHz 镜像与 20 kHz 的 −0.58 dB 衰落）；
-- 换成**独立精密基准**，把有效分辨率从 10~12 位往 16 位推；
+- 在输出端加**重建滤波器**（抑制 99 kHz 等采样镜像；通带衰落需另外评估是否补偿）；
+- 换成**独立精密基准**，降低系统增益误差和参考噪声，并通过测量评估有效精度；
 - 把 `sine_lut` 换成双口 RAM + VIO 写端口，升级成**任意波形发生器**（DDS 部分一行都不用改）；
 - 把 LDAC_N 从接地改成 FPGA 控制，做**双通道同步输出**。

@@ -30,14 +30,16 @@ sample: false
 
 **精度从哪来。** 测量分辨率就是一个 PL 时钟周期：约束文件里 `create_clock -name clk_100m -period 10.000`，也就是 10 ns / 100 MHz。所以这个仪器给出的所有时间量都是 10 ns 的整数倍——它不是连续测量，而是"数格子"。
 
-源文档对误差的表述是：输入是异步信号，而且隔离器的上升沿、下降沿传播延迟可能不同，所以实际计数允许有少量波动。
+关于误差来源：由于输入是异步信号，而且隔离器的上升沿、下降沿传播延迟可能不同，因此实际计数允许有少量波动（±1 个时钟周期的门控量化误差外加器件脉宽失真）。
 
-## 已确认的硬件连接
+## 硬件连接与适配范围
 
 | 功能 | 底板网络 | FPGA 管脚 | I/O 标准 |
 |---|---|---|---|
 | 100 MHz PL 时钟 | PL_CLK | C8 | SSTL135 |
 | 数字输入通道5 | F_IN5 | AC16 | LVCMOS33 |
+
+下表与 XDC 保留了本工程的配置。C8 在继电器工程里使用 `LVCMOS33`，这里使用 `SSTL135`；应按实际核心板版本、Bank 供电与时钟电平核对，不为消除 DRC 任意互换。Vivado 的实际版本未记录。
 
 SCSI1 外部接口：
 
@@ -125,7 +127,7 @@ set_property IOSTANDARD LVCMOS33 [get_ports f_in5_n]
   <figcaption>图 1：测量原理。100 MHz 时钟在每个高电平区间累计出 high_count、在每个低电平区间累计出 low_count，两者相加就是跨一个完整周期的 period_count；脉宽与周期只差一个"乘 10 ns"，频率和占空比则分别用 period_count 做分母、100000000 和 high_count × 10000 做分子换算。图中 ① 是第一个上升沿，只启动计数；② 是第二个上升沿，此时一段高电平和一段低电平都已量完，三个计数才一起发布（对应 ILA 里的 measurement_valid）。为便于对照，图中把被测方波的边沿画在时钟沿上；实际输入是异步的，边沿落在两个时钟沿之间的任何位置都可能。</figcaption>
 </figure>
 
-### 换算公式（与源文档逐字一致）
+### 换算公式汇总
 
 - 高电平时间：`high_count × 10 ns`；
 - 低电平时间：`low_count × 10 ns`；
@@ -151,7 +153,7 @@ set_property IOSTANDARD LVCMOS33 [get_ports f_in5_n]
 | `result_valid` | 新的频率和占空比结果已更新 |
 | `calculation_busy` | 两个顺序除法器正在工作 |
 
-`measurement_valid` 在第二个有效上升沿到来时更新原始计数；约 640 ns 后，`result_valid` 更新计算结果。
+`measurement_valid` 在第二个有效上升沿到来时更新原始计数；经过至少约 640 ns 的除法迭代及少量调度拍数后，`result_valid` 更新计算结果。
 
 ## 模块一：pulse_width_measure.v
 
@@ -241,7 +243,7 @@ endmodule
 
 几个值得盯着看的点：
 
-- **边沿检测就是打一拍再比较。** `signal_d` 是 `signal_in` 的一拍延迟版本，`rise_pulse = signal_in & ~signal_d`、`fall_pulse = ~signal_in & signal_d` 就是组合逻辑写出来的差分。这里两个脉冲是 `assign` 出来的线，不是寄存器；README 把它们的宽度记作"一个 100 MHz 时钟周期"。
+- **边沿检测就是打一拍再比较。** `signal_d` 是 `signal_in` 的一拍延迟版本，`rise_pulse = signal_in & ~signal_d`、`fall_pulse = ~signal_in & signal_d` 就是组合逻辑写出来的差分。输入已经同步到本时钟域，比较当前值与一拍延迟值会形成一个 100 MHz 时钟周期宽的脉冲。这里用 `assign` 组合输出，不额外寄存。
 - **三段状态决定在数谁。** `measure_started` 表示已经见过第一个上升沿；`phase_high` 表示当前处在高电平区间；`have_high` 表示这一轮的高电平已经量完、可以开始量低电平了。低电平只在 `have_high` 成立后才计数，所以"还没见过完整高电平"的那一段不会污染 `low_count`。
 - **计数是饱和的。** 两个 `if (… != {COUNTER_WIDTH{1'b1}})` 让计数器加满就停住，不会回绕成一个看起来很正常的小数字。
 - **`+1` 是刻意的补偿。** `high_finished` / `low_finished` 都在工作计数上加一，`finished_period` 又是 `high_pending + low_finished`，也就是把边沿落在的那个时钟间隔补进去。testbench 期望的 `high=50 / low=50 / period=100` 正是这套语义的结果：驱动 50 个高电平时钟、50 个低电平时钟，量出来就是一个 100 的周期。
@@ -319,8 +321,8 @@ endmodule
 ```
 
 - **位宽是被分母撑出来的。** 分子 64 位、分母 33 位、余数 34 位（多留一位给加减），商 64 位。这一组位宽和顶层 `period_count` 是 33 位这件事是配套的。
-- **一次除法 = 64 次迭代。** `iterations` 初值 `7'd64`，每个 `clk` 减一，减到 1 时把 `quotient` 推出去、`busy` 落下、`done` 拉高。README 记录的耗时就是"64 个系统时钟，约 640 ns"。
-- **它不占组合时序。** 每个周期只做一次"移位 + 比较 + 可能减一次"，没有一条贯穿 64 位的单周期组合除法路径——模块注释里的 `The divider contains no large single-cycle combinational division path` 说的就是这件事。
+- **一次除法 = 64 次迭代。** `iterations` 初值 `7'd64`，每个 `clk` 减一，减到 1 时把 `quotient` 推出去、`busy` 落下、`done` 拉高。迭代本身耗时 64 个系统时钟，约 640 ns；顶层调度和结果锁存还会增加少量拍数。
+- **它把组合运算分散到多拍。** 每个周期只做一次"移位 + 比较 + 可能减一次"，没有一条贯穿 64 位的单周期组合除法路径——模块注释里的 `The divider contains no large single-cycle combinational division path` 说的就是这件事。
 - **除零是一条单独的路。** 分母为 0 时直接给出 `quotient = 64'hFFFF_FFFF_FFFF_FFFF`、`divide_by_zero` 置位、`done` 立刻拉高，不进 64 拍的流程。**这个全 1 不是结果**，顶层的处理才是最终行为：`freq_divide_by_zero || duty_divide_by_zero` 成立时，把 `frequency_hz` 和 `duty_x100` 都写成 0。
 
 ## 模块三：pulse_width_top.v
@@ -473,7 +475,7 @@ endmodule
 - **`CLK_FREQ_HZ = 64'd100_000_000` 是写死的。** 频率换算全靠这个常量，换板子或换 PL 时钟就必须改它，它不会自动跟着 XDC 走。
 - **所有要看的信号都挂了 `MARK_DEBUG`。** `in_level`、`high_count`、`low_count`、`period_count`、`measurement_valid`、`rise_pulse`、`fall_pulse`、`frequency_hz`、`duty_x100`、`result_valid`、`calculation_busy`——后面 Set Up Debug 时"带 MARK_DEBUG 的信号全部加入 ILA"指的就是这些。
 - **两个除法器共用一个 start。** `divider_start` 只拉高一个时钟周期，两个 `divider_u64_u33` 同拍启动，分母都是当前的 `period_count`；`dividers_busy = freq_busy | duty_busy` 就是 ILA 里的 `calculation_busy`。
-- **忙的时候只留一个待办。** 测量比 640 ns 的除法快得多，所以 `calculation_pending` 只保留"有新结果要算"这一个标志位，等两个除法器都空闲了再启动下一次；注释里那句 `The calculation starts from the latest stable counts` 说的就是它会用最新的一组计数去算。这意味着**中间的测量结果可能被跳过**，ILA 上看计数和看结果是两种节奏。
+- **忙的时候只留一个待办。** 当输入周期短于换算间隔时， `calculation_pending` 只保留"有新结果要算"这一个标志位，等两个除法器都空闲了再启动下一次；注释里那句 `The calculation starts from the latest stable counts` 说的就是它会用最新的一组计数去算。这意味着**中间的测量结果可能被跳过**，ILA 上看计数和看结果是两种节奏。
 - **×10000 用移位加法，不用乘法器。** 8192 + 1024 + 512 + 256 + 16 = 10000，源文件把每一项都注释成了 `x8192` / `x1024` / `x512` / `x256` / `x16`，对着看一眼就能核出系数。
 - **结果截断到 32 位。** `frequency_quotient[31:0]` / `duty_quotient[31:0]` 写进 `frequency_hz` / `duty_x100`，除法器本身是 64 位商。
 
@@ -590,19 +592,19 @@ finally {
 
 两个检查任务（源文件里完整实现，这里只说它们判什么）：`wait_and_check_measurement` 一直等到 `measurement_valid` 且 `high_count` / `low_count` / `period_count` 三项都等于期望值，才打印 `MEASURE PASS`；`wait_and_check_result` 等 `result_valid` 的上升沿，逐一比对 `frequency_hz` 和 `duty_x100`，不一致就累加 `errors`。所以最后一个用例里的 `ALL TESTS PASSED` 是三个用例的计数和结果全部对上的意思。
 
-测试平台自动验证的三组值，和 README 第 4 节完全对应：
+测试平台检查下面三组理论值：
 
 | 用例 | 驱动的高/低电平时钟数 | `period_count` | `frequency_hz` | `duty_x100` | 依据 |
 |---|---|---|---|---|---|
-| 1 | 50 / 50 | 100 | 1 000 000 Hz（1 MHz） | 5000（50.00%） | README 第 4 节第 1 条 |
-| 2 | 75 / 175 | 250 | 400 000 Hz（400 kHz） | 3000（30.00%） | README 第 4 节第 2 条 |
-| 3 | 90 / 30 | 120 | 833 333 Hz | 7500（75.00%） | README 第 4 节第 3 条 |
+| 1 | 50 / 50 | 100 | 1 000 000 Hz（1 MHz） | 5000（50.00%） | `drive_period(50, 50)` |
+| 2 | 75 / 175 | 250 | 400 000 Hz（400 kHz） | 3000（30.00%） | `drive_period(75, 175)` |
+| 3 | 90 / 30 | 120 | 833 333 Hz | 7500（75.00%） | `drive_period(90, 30)` |
 
 第 3 个用例还顺带说明了"整数频率"的含义：`floor(100 MHz / 120) = 833333`，小数部分舍去，正好呼应 `frequency_hz` 的含义表。
 
 ### 仿真输出里能读到什么
 
-源目录里的 `pulse_width_tb.out` 是 Icarus 的 vvp 编译产物（文件头是 `:ivl_version "12.0"`），不是仿真运行日志；它能佐证的是 tb 里编译进去的判定字符串，例如 `ALL TESTS PASSED`、`TESTS FAILED: %0d error(s)` 和 `TIMEOUT`。
+原实验工程中的 `pulse_width_tb.out` 是 Icarus 的 vvp 编译产物（文件头是 `:ivl_version "12.0"`），不是仿真运行日志；它能佐证的是 tb 里编译进去的判定字符串，例如 `ALL TESTS PASSED`、`TESTS FAILED: %0d error(s)` 和 `TIMEOUT`。
 
 ```text
 :ivl_version "12.0 (devel)" "(s20150603-1539-g2693dd32b)";
@@ -628,7 +630,7 @@ finally {
 9. 运行 Behavioral Simulation，应看到 `ALL TESTS PASSED`；
 10. 运行 Synthesis。
 
-第 3 步的器件在 Vivado 里的完整写法是 `xc7z035ffg676-2`（源 README 写作 XC7Z035 FFG676 + 速度等级 `-2`），和约束文件头部注释里的 "Zynq-7035 onboard 100 MHz PL clock" 是同一块板子，也就是本页 frontmatter 里的 Zynq-7035 核心板。
+第 3 步的器件在 Vivado 里的完整写法是 `xc7z035ffg676-2`（XC7Z035 FFG676 + 速度等级 `-2`），和约束文件头部注释里的 "Zynq-7035 onboard 100 MHz PL clock" 对应同一块 Zynq-7035 核心板。
 
 第 6 步容易搞错：testbench 只能进 **Simulation Sources**，一旦混进 Design Sources，综合会把它当成一个多余的顶层候选。
 
@@ -681,7 +683,7 @@ finally {
 
 ## 1 kHz、50% 时的预期结果
 
-| 观测点 | 预期值 | 按源文档公式核对 |
+| 观测点 | 预期值 | 公式核对 |
 |---|---|---|
 | `high_count` | 约为 50000 | 50000 × 10 ns = 500 µs 高电平 |
 | `low_count` | 约为 50000 | 50000 × 10 ns = 500 µs 低电平 |
@@ -719,7 +721,7 @@ finally {
 
 **2. 上电就去找输出，什么也找不到。**
 
-没有输入信号时 `period_count` 是 0，除法器走的是除零那条路，顶层把 `frequency_hz` 和 `duty_x100` 都写成 0。这是代码行为，不是坏了——先接上信号源再谈读数。
+上电后没有输入边沿时，计数和计算结果保持初值 0，也不会自动发起除法。只有发起计算且分母为 0 时才走除零保护。输入停止后，当前设计没有超时清零，读数可能保留上一次结果；要结合 `measurement_valid` / `result_valid` 判断数据是否更新。
 
 **3. 两个"valid"的节奏不一样，第一次抓波形会以为没结果。**
 
@@ -727,7 +729,7 @@ finally {
 
 **4. 测量比换算快，中间的计数被跳过了。**
 
-`calculation_pending` 只保留一个待办标志位：除法器忙的时候再来新测量，只会把"有结果要算"记住，而不会排队。所以 ILA 上 `measurement_valid` 可能连着出现好几次，`result_valid` 才来一次。这不是丢数据，是刻意不让换算追着测量跑。
+`calculation_pending` 只保留一个待办标志位：除法器忙的时候再来新测量，只会把"有结果要算"记住，而不会排队。所以 ILA 上 `measurement_valid` 可能连着出现好几次，`result_valid` 才来一次。这是保留最新计数的降采样策略，中间周期的数据可能被舍弃，不能把它理解为逐周期无损记录。
 
 **5. 采样深度不够，一个完整周期都装不下。**
 
@@ -735,15 +737,15 @@ finally {
 
 **6. 示波器地夹接错位置。**
 
-源文档写得很明确：示波器地夹接 IN5_N，**不要接 IN5_P**；信号发生器和示波器通常通过保护地相连，接线前先关闭信号发生器输出。这一条弄错，代价可能是把信号源或探头搭进去。
+务必注意：示波器地夹接 IN5_N，**不要接 IN5_P**；信号发生器和示波器通常通过保护地相连，接线前先关闭信号发生器输出。这一条弄错，代价可能是把信号源或探头搭进去。
 
 **7. 触发不了就加电压。**
 
-源文档的态度很直接：不要一开始使用带负电压的双极性方波，也不要在不能触发时盲目提高输入电压。先用示波器确认信号发生器的实际频率、占空比和 0～5 V 电平，再怀疑 FPGA 那一侧。
+不要一开始使用带负电压的双极性方波，也不要在不能触发时盲目提高输入电压。先用示波器确认信号发生器的实际频率、占空比和 0～5 V 电平，再怀疑 FPGA 那一侧。
 
 **8. 分不清哪一份文件该进哪个 Sources。**
 
-`tb_pulse_width_top.v` 只能进 **Simulation Sources**。源文件清单里它和三个设计文件是分开列的，建工程时按 README 第 5 步的第 4、6 条分开放，综合才不会多出一个顶层候选。
+`tb_pulse_width_top.v` 只能进 **Simulation Sources**。源文件清单里它和三个设计文件是分开列的，建工程时按上文建工程步骤第 4、6 条分开放，综合才不会多出一个顶层候选。
 
 **9. 排查清单。**
 
@@ -759,7 +761,6 @@ finally {
 
 ## 下一步
 
-- 把 `iverilog` / `vvp` 运行时的完整终端输出（那几行 `MEASURE PASS` / `RESULT PASS` / `ALL TESTS PASSED`）保存下来，替换掉目前只能佐证编译产物的 `pulse_width_tb.out` 片段。
-- 器件型号在正文里统一写成 `xc7z035ffg676-2`，本页 frontmatter 的 board 统一写"Zynq-7035 核心板 + 自制 AD/DA 底板"，避免以后再串出 Zynq-7020 这类写法。
-- 把写死的 `CLK_FREQ_HZ` 改成参数（或与 `create_clock` 的 10 ns 一起维护），否则换 PL 时钟频率时频率读数会静默地错掉。
-- 拿双极性方波做一次对照实验，把源文档"不要一开始使用带负电压的双极性方波"这句话变成有波形的结论。
+- 把 `iverilog` / `vvp` 运行时的完整终端输出（那几行 `MEASURE PASS` / `RESULT PASS` / `ALL TESTS PASSED`）保存下来，对照 `pulse_width_tb.out` 编译产物。
+- 把写死的 `CLK_FREQ_HZ` 改成模块参数（或与 `create_clock` 的 10 ns 一起维护），避免更换 PL 时钟频率时频率读数静默出错。
+- 在核定输入保护与允许电压范围后，再研究不同偏置对前端门限的影响，不盲目提高输入电压或默认施加负电压。

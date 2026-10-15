@@ -7,7 +7,7 @@ status: "计划中"
 accent: "purple"
 diagram: "wave"
 sample: true
-draft: false
+draft: true
 ---
 
 > 这是项目展示模板，用于预览页面，不代表 lulu 已开展或完成这个项目。

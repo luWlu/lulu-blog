@@ -5,7 +5,7 @@ date: 2026-10-13
 category: "硬件基础"
 tags: ["学习方法", "硬件电子"]
 sample: true
-draft: false
+draft: true
 ---
 
 > 这是一篇示例文章，用来预览标题、段落、目录和表格的排版。它不代表已经完成的个人学习成果。

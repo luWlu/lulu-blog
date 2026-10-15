@@ -2,11 +2,39 @@
 import '../styles/global.css';
 import Icon from '../components/Icon.astro';
 import { site, url } from '../lib/site';
-interface Props { title?: string; description?: string; active?: string; noindex?: boolean; canonical?: boolean; }
-const { title, description = site.description, active = '', noindex = false, canonical: showCanonical = true } = Astro.props;
+
+interface Props {
+  title?: string;
+  description?: string;
+  active?: string;
+  noindex?: boolean;
+  canonical?: boolean;
+  article?: { date: Date; tags: string[] };
+}
+const { title, description = site.description, active = '', noindex = false, canonical: showCanonical = true, article } = Astro.props;
 const pageTitle = title ? `${title} · ${site.name}` : `${site.name} — 学习、探索与创造`;
 const canonical = showCanonical ? new URL(Astro.url.pathname, Astro.site) : undefined;
-const navigation = [{ label: '首页', path: '', key: 'home' }, { label: '实验记录', path: 'experiments/', key: 'experiments' }, { label: '学习记录', path: 'notes/', key: 'notes' }, { label: '项目展示', path: 'projects/', key: 'projects' }, { label: '关于我', path: 'about/', key: 'about' }];
+const socialImage = new URL(url('social-card.png'), Astro.site);
+const navigation = [
+  { label: '首页', path: '', key: 'home' },
+  { label: '实验记录', path: 'experiments/', key: 'experiments' },
+  { label: '学习记录', path: 'notes/', key: 'notes' },
+  { label: '项目展示', path: 'projects/', key: 'projects' },
+  { label: '关于我', path: 'about/', key: 'about' },
+];
+const articleSchema = article && canonical ? {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: title,
+  description,
+  datePublished: article.date.toISOString(),
+  author: { '@type': 'Person', name: site.author },
+  mainEntityOfPage: canonical.href,
+  url: canonical.href,
+  image: socialImage.href,
+  keywords: article.tags.join(', '),
+  inLanguage: 'zh-CN',
+} : undefined;
 ---
 <!doctype html>
 <html lang="zh-CN">
@@ -17,11 +45,28 @@ const navigation = [{ label: '首页', path: '', key: 'home' }, { label: '实验
     <meta name="theme-color" content="#7453de" />
     {noindex && <meta name="robots" content="noindex, follow" />}
     {canonical && <link rel="canonical" href={canonical} />}
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={article ? 'article' : 'website'} />
+    <meta property="og:site_name" content={site.name} />
+    <meta property="og:locale" content="zh_CN" />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
     {canonical && <meta property="og:url" content={canonical} />}
-    <meta property="og:image" content={new URL(url('social-card.svg'), Astro.site)} />
+    <meta property="og:image" content={socialImage} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="lulu's blog：把想法接上线，让知识慢慢发光。" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={socialImage} />
+    <meta name="twitter:image:alt" content="lulu's blog：学习记录与项目手记" />
+    {article && <>
+      <meta name="author" content={site.author} />
+      <meta property="article:published_time" content={article.date.toISOString()} />
+      {article.tags.map(tag => <meta property="article:tag" content={tag} />)}
+    </>}
+    {articleSchema && <script type="application/ld+json" is:inline set:html={JSON.stringify(articleSchema).replaceAll('<', '\\u003c')} />}
     <link rel="icon" type="image/svg+xml" href={url('favicon.svg')} />
     <link rel="alternate" type="application/rss+xml" title={site.name} href={url('rss.xml')} />
     <title>{pageTitle}</title>
@@ -41,7 +86,7 @@ const navigation = [{ label: '首页', path: '', key: 'home' }, { label: '实验
           {navigation.map(item => <a href={url(item.path)} class:list={['nav-link', { active: active === item.key }]} aria-current={active === item.key ? 'page' : undefined}>{item.label}</a>)}
         </nav>
         <div class="header-actions">
-          <button class="icon-button search-trigger" aria-label="搜索文章和项目" title="搜索（Ctrl / ⌘ + K）"><Icon name="search" /><kbd class="search-shortcut">⌘ K</kbd></button>
+          <button class="icon-button search-trigger" aria-label="搜索实验、笔记和项目" title="搜索（Ctrl / ⌘ + K）"><Icon name="search" /><kbd class="search-shortcut">Ctrl K</kbd></button>
           <button id="theme-toggle" class="icon-button" aria-label="切换深色模式"><Icon name="sun" class="theme-sun" /><Icon name="moon" class="theme-moon" /></button>
           <button id="menu-toggle" class="icon-button mobile-menu-button" aria-label="展开导航" aria-expanded="false" aria-controls="mobile-nav"><Icon name="menu" /></button>
         </div>
@@ -57,81 +102,21 @@ const navigation = [{ label: '首页', path: '', key: 'home' }, { label: '实验
     </footer>
     <dialog id="search-dialog" class="search-dialog" aria-labelledby="search-title" data-index={url('search-index.json')}>
       <div class="search-dialog-header"><h2 id="search-title">寻找一个想法</h2><button id="search-close" class="icon-button" aria-label="关闭搜索"><Icon name="close" /></button></div>
-      <label class="search-input-wrap"><Icon name="search" /><span class="sr-only">搜索标题、标签或简介</span><input id="search-input" type="search" placeholder="搜索笔记、项目、关键词…" autocomplete="off" /></label>
+      <label class="search-input-wrap"><Icon name="search" /><span class="sr-only">搜索标题、标签或简介</span><input id="search-input" type="search" placeholder="搜索实验、笔记、项目…" autocomplete="off" aria-controls="search-results" aria-describedby="search-help" /></label>
       <p id="search-status" class="search-status" role="status">输入关键词，开始探索。</p>
-      <div id="search-results" class="search-results"></div>
-      <div class="search-dialog-footer"><span>搜索标题、简介和标签</span><span><kbd>ESC</kbd> 关闭</span></div>
+      <div id="search-results" class="search-results" aria-label="搜索结果"></div>
+      <div id="search-help" class="search-dialog-footer"><span>标题、简介和标签 · ↑ ↓ 选择 · Enter 打开</span><span><kbd>ESC</kbd> 关闭</span></div>
     </dialog>
     <script>
-      const toggle = document.querySelector<HTMLButtonElement>('#theme-toggle');
-      function syncThemeLabel() { toggle?.setAttribute('aria-label', document.documentElement.dataset.theme === 'dark' ? '切换浅色模式' : '切换深色模式'); }
-      syncThemeLabel();
-      toggle?.addEventListener('click', () => {
-        const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-        document.documentElement.dataset.theme = theme;
-        try { localStorage.setItem('lulu-theme', theme); } catch {}
-        syncThemeLabel();
-      });
-      const menu = document.querySelector<HTMLButtonElement>('#menu-toggle');
-      const mobileNav = document.querySelector<HTMLElement>('#mobile-nav');
-      menu?.addEventListener('click', () => {
-        if (!mobileNav) return;
-        const expanded = menu.getAttribute('aria-expanded') === 'true';
-        menu.setAttribute('aria-expanded', String(!expanded));
-        menu.setAttribute('aria-label', expanded ? '展开导航' : '收起导航');
-        mobileNav.hidden = expanded;
-      });
-      const dialog = document.querySelector<HTMLDialogElement>('#search-dialog');
-      const input = document.querySelector<HTMLInputElement>('#search-input');
-      const results = document.querySelector<HTMLElement>('#search-results');
-      const status = document.querySelector<HTMLElement>('#search-status');
-      type SearchEntry = { title: string; description: string; tags: string[]; kind: string; href: string; sample: boolean };
-      let entries: SearchEntry[] | null = null;
-      let loading: Promise<void> | undefined;
-      let loadFailed = false;
-      function renderResults() {
-        if (!input || !results || !status) return;
-        const query = input.value.trim().toLocaleLowerCase();
-        results.replaceChildren();
-        if (loadFailed) { status.textContent = '暂时无法加载搜索，请稍后重新打开，或前往学习记录页面浏览。'; return; }
-        if (!entries) { status.textContent = '正在加载搜索…'; return; }
-        if (!query) { status.textContent = '输入关键词，开始探索。'; return; }
-        const matches = entries.filter(entry => `${entry.title} ${entry.description} ${entry.tags.join(' ')}`.toLocaleLowerCase().includes(query));
-        status.textContent = matches.length ? `找到 ${matches.length} 个相关内容` : '还没有找到相关内容，换个关键词试试。';
-        for (const entry of matches) {
-          const link = document.createElement('a'); link.href = entry.href; link.className = 'search-result';
-          const kind = document.createElement('span'); kind.className = 'search-result-kind'; kind.textContent = `${entry.kind}${entry.sample ? ' · 示例' : ''}`;
-          const title = document.createElement('strong'); title.textContent = entry.title;
-          const description = document.createElement('p'); description.textContent = entry.description;
-          link.append(kind, title, description); results.append(link);
-        }
-      }
-      async function openSearch() {
-        if (!dialog || !input) return;
-        if (!dialog.open) dialog.showModal();
-        input.focus();
-        if (!entries && !loading) {
-          loadFailed = false;
-          loading = (async () => {
-            try {
-              const response = await fetch(dialog.dataset.index!);
-              if (!response.ok) throw new Error('Search unavailable');
-              entries = await response.json();
-            } catch { loadFailed = true; }
-          })().finally(() => { loading = undefined; renderResults(); });
-        }
-        renderResults();
-        await loading;
-      }
-      document.querySelectorAll('.search-trigger').forEach(button => button.addEventListener('click', openSearch));
-      document.querySelector('#search-close')?.addEventListener('click', () => dialog?.close());
-      input?.addEventListener('input', renderResults);
-      dialog?.addEventListener('click', event => { if (event.target === dialog) { const bounds = dialog.getBoundingClientRect(); if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dialog.close(); } });
-      document.addEventListener('keydown', event => {
-        if (event.key === 'Escape' && dialog?.open) { event.preventDefault(); dialog.close(); return; }
-        const typing = event.target instanceof HTMLElement && (event.target.matches('input, textarea') || event.target.isContentEditable);
-        if ((event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey)) || (event.key === '/' && !typing)) { event.preventDefault(); void openSearch(); }
-      });
+      import '../scripts/site';
     </script>
   </body>
 </html>
+
+<style>
+  .search-dialog :global(.search-result.is-selected) { background: var(--purple-soft); }
+  @media (max-width: 420px) {
+    .search-dialog-footer { gap: 10px; align-items: center; font-size: 9px; }
+    .search-dialog-footer > span:last-child { white-space: nowrap; }
+  }
+</style>

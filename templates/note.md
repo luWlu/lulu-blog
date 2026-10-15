@@ -1,7 +1,7 @@
 ---
 title: "你的文章标题"
 description: "用一两句话介绍这篇文章。"
-date: 2026-10-13
+date: 2026-10-15 # 改为实际写作或整理发布日期；页面按 Asia/Shanghai 显示
 category: "硬件基础"
 tags: ["硬件电子"]
 sample: false

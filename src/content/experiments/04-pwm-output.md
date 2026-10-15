@@ -1,6 +1,6 @@
 ---
 title: "实验三：PWM 生成与示波器验证"
-description: "计数器与比较值定出占空比，ULN2803 的反相由 RTL 补偿，示波器在物理 OC5 上量到与参数一致的高电平占空比。"
+description: "计数器与比较值定出占空比，ULN2803 的反相由 RTL 补偿，在物理 OC5 上核对频率与高电平占空比，区分理论参考、仿真检查与上板现象。"
 date: 2026-09-20
 order: 4
 stage: "基础"
@@ -27,12 +27,14 @@ PWM 的用处正在这里——它用一路数字方波等效一个模拟量：�
 | 占空比 + 频率扫描 | `duty_freq_sweep_pwm.v` | 先扫占空比，再扫频率，两种模式交替 |
 | 呼吸灯 | `breath_pwm.v` | 固定载波频率，占空比三角波式来回渐变 |
 
-## 已确认的硬件通道
+## 硬件通道与适配范围
 
 | 功能 | 底板网络 | 底板到核心板 | FPGA 管脚 | I/O 标准 |
 |---|---|---|---|---|
 | 100 MHz PL 时钟 | PL_CLK | 核心板板载晶振 | C8 | SSTL135 |
 | 开集电极输出通道5 | F_OC5 | HT1-A36 | AC24 | LVCMOS33 |
+
+这里保留本工程的 XDC 配置。C8 在继电器工程里使用 `LVCMOS33`，这里使用 `SSTL135`；实际采用哪一个须按核心板版本、Bank 供电与时钟电平核对，不能只看 DRC 是否通过。Vivado 的实际版本未记录。
 
 SCSI1 外部接口相关引脚：
 
@@ -55,7 +57,7 @@ set_property DRIVE 8 [get_ports f_oc5]
 set_property SLEW SLOW [get_ports f_oc5]
 ```
 
-`create_clock -period 10.000` 就是后面所有频率计算的基准：一个时钟 10 ns、100 MHz。`DRIVE 8` 和 `SLEW SLOW` 是给开集电极这一路降边沿速度用的。
+`create_clock -period 10.000` 就是后面所有频率计算的基准：一个时钟 10 ns、100 MHz。`DRIVE 8` 和 `SLEW SLOW` 控制 FPGA 管脚驱动 ULN2803 输入的电气特性；物理 OC5 的边沿还受达林顿级、上拉和负载影响。
 
 ### 输出电路极性：参数写 30%，示波器就该看到 30%
 
@@ -184,10 +186,12 @@ endmodule
 - **`HIGH_COUNT` 用两段乘除写。** 先处理整除 100 的部分、再处理余数部分，避免大整数相乘时中间结果被截断。默认 1 kHz、50% 时 `PERIOD_COUNT = 100000`、`HIGH_COUNT = 50000`、`COUNTER_WIDTH = $clog2(PERIOD_COUNT) = 17`。
 - **0% 和 100% 是特判出来的。** `pwm_level` 是个三元表达式：`DUTY_PERCENT <= 0` 直接给 0，`>= 100` 直接给 1，只有中间值才走比较器，意图比"让两端自己退化"明确。
 - **计数器位宽跟着 `PERIOD_COUNT` 走，`PERIOD_COUNT = 1` 的退化情况单独保护成 1 位。**
-- **没有复位引脚。** 源文件注释说得很清楚：Xilinx 7 系列 FPGA 支持寄存器上电初值，所以 `pwm_counter` 直接在声明处赋 `{COUNTER_WIDTH{1'b0}}`，不额外占用一个复位脚。
+- **没有复位引脚。** Xilinx 7 系列 FPGA 支持寄存器上电初值，所以 `pwm_counter` 直接在声明处赋 `{COUNTER_WIDTH{1'b0}}`，不额外占用一个复位脚。
 - **`pwm_level` 挂了 `KEEP` 和 `MARK_DEBUG`。** `KEEP` 防止综合把它优化掉，`MARK_DEBUG` 让它在 Set Up Debug 里可以被加进 ILA；`pwm_counter` 只挂了 `MARK_DEBUG`。
 
 ## 模块二：freq_sweep_pwm.v（频率扫描）
+
+以下扫描模块展示核心逻辑，省略了部分步进计时器实现，不是可直接复制上板的完整工程。`step_tick` 的产生、计数器初值和输出约束需在原工程中完整核对。
 
 占空比固定约 50%，让**周期值**从 `PERIOD_MAX` 一步一步减到 `PERIOD_MIN`，频率就自动从低到高爬升；爬到顶再跳回起点重新扫。关键在最后那句 `assign f_oc1 = ~(pwm_cnt < (period >> 1));`：比较值不是常量，而是当前周期值的一半，所以周期怎么变，占空比都锁在 50% 附近。
 
@@ -208,7 +212,7 @@ module freq_sweep_pwm
     // 由频率算周期：period = CLK_FREQ / 频率
     localparam PERIOD_MAX  = CLK_FREQ / F_MIN;   // 最低频对应的周期
     localparam PERIOD_MIN  = CLK_FREQ / F_MAX;   // 最高频对应的周期
-    localparam PERIOD_W    = $clog2(PERIOD_MAX); // 周期计数器位宽
+    localparam PERIOD_W    = $clog2(PERIOD_MAX + 1); // period 需要能保存 PERIOD_MAX
 
     // 每走完 STEP_CLKS 个时钟，period 减 1 => 频率升高一点
     localparam TOTAL_STEPS = PERIOD_MAX - PERIOD_MIN;                 // 扫描总步数
@@ -242,15 +246,15 @@ module freq_sweep_pwm
     end
 
     // PWM 输出 - 占空比固定约 50%：前半周期高，后半周期低
-    // （保留原代码的取反，即 1=灭/低有效；不需要就去掉 ~）
+    // 这里输出为比较结果的反相；若接反相开集驱动，物理电平再次取反
     assign f_oc1 = ~(pwm_cnt < (period >> 1));
 
 endmodule
 ```
 
-默认参数下：`PERIOD_MAX = CLK_FREQ / F_MIN = 100000`、`PERIOD_MIN = CLK_FREQ / F_MAX = 10000`、`PERIOD_W = $clog2(PERIOD_MAX) = 17`、`TOTAL_STEPS = PERIOD_MAX - PERIOD_MIN = 90000`、`STEP_CLKS = (CLK_FREQ / 1000 * SWEEP_MS) / TOTAL_STEPS = 2222`。
+默认参数下：`PERIOD_MAX = CLK_FREQ / F_MIN = 100000`、`PERIOD_MIN = CLK_FREQ / F_MAX = 10000`、`PERIOD_W = $clog2(PERIOD_MAX + 1) = 17`、`TOTAL_STEPS = PERIOD_MAX - PERIOD_MIN = 90000`、`STEP_CLKS = (CLK_FREQ / 1000 * SWEEP_MS) / TOTAL_STEPS = 2222`。90000 次递减共需约 1999.8 ms，另有回跳起点的步进开销；这是整数步进近似，不能把 `SWEEP_MS=2000` 当作精确整轮时长。`period` 还必须能保存 `PERIOD_MAX`，所以位宽使用 `$clog2(PERIOD_MAX + 1)`，在最大值恰为 2 的幂时尤其重要。
 
-扫频方向只有"低 → 高"一种，扫到 `F_MAX` 就跳回 `F_MIN`。源文件注释给了改法：想做成"高 → 低 → 高"的往返扫描，照 `breath_pwm.v` 里 `dir` 标志的写法加一个方向位即可——这句话把两个模块的设计套路串起来了。
+扫频方向只有"低 → 高"一种，扫到 `F_MAX` 就跳回 `F_MIN`。想做成"高 → 低 → 高"的往返扫描，照 `breath_pwm.v` 里 `dir` 标志的写法加一个方向位即可——这句话把两个模块的设计套路串起来了。
 
 ## 模块三：duty_freq_sweep_pwm.v（占空比 + 频率扫描）
 
@@ -299,7 +303,7 @@ endmodule
     end
 ```
 
-**那个累加器是这一节最值得抄的写法。** `duty_step_acc` 每个时钟加 `DUTY_STEPS`，一旦越过 `MODE_CLKS` 就减掉 `MODE_CLKS` 并推进一步占空比。这就是"用宽累加器做分频"的标准做法，把 `DUTY_STEPS` 次变化均匀撒在 `MODE_CLKS` 个时钟里。源文件注释把理由写得很直白：相比直接把 `MODE_CLKS / DUTY_STEPS` 取整得到一个 `STEP_CLKS`，这样可以避免整数除法余数造成的扫描时间偏差——正好补上了 `freq_sweep_pwm.v` 里那个 2222 的截断。
+**那个累加器是这一节最值得抄的写法。** `duty_step_acc` 每个时钟加 `DUTY_STEPS`，一旦越过 `MODE_CLKS` 就减掉 `MODE_CLKS` 并推进一步占空比。这就是"用宽累加器做分频"的标准做法，把 `DUTY_STEPS` 次变化均匀撒在 `MODE_CLKS` 个时钟里。相比直接把 `MODE_CLKS / DUTY_STEPS` 取整得到一个 `STEP_CLKS`，这样可以避免整数除法余数造成的扫描时间偏差——正好补上了 `freq_sweep_pwm.v` 里那个 2222 的截断。
 
 频率那一半是同样的累加器思路，只是推进的对象换成了 `period`：`freq_step_acc` 越过 `MODE_CLKS` 时让 `period` 减一，减到 `PERIOD_MIN` 就停住；退出频率模式时把 `period` 复位回 `PERIOD_MAX`、累加器清零。输出选择就是把两路合到一根管脚上：
 
@@ -312,7 +316,7 @@ endmodule
 
 默认参数下：`MODE_CLKS = (CLK_FREQ / 1000) * MODE_MS = 200000000`，`MODE_CNT_W = $clog2(MODE_CLKS) = 28`、`ACC_W = 29`，`PWM_MAX = (1 << PWM_WIDTH) - 1 = 1023`、`DUTY_STEPS = 2 * PWM_MAX = 2046`，`FREQ_STEPS = PERIOD_MAX - PERIOD_MIN = 90000`。
 
-模块末尾有一个完整的 `initial` 块，把 `mode`、`mode_cnt`、`duty_pwm_cnt`、`duty`、`duty_dir`、`duty_step_acc`、`period`、`freq_pwm_cnt`、`freq_step_acc` 全部初始化。源文件注释同样说明：本模块没有复位端口，使用 `initial` 设置 FPGA 上电初值，Vivado 可综合该写法。
+模块末尾有一个完整的 `initial` 块，把 `mode`、`mode_cnt`、`duty_pwm_cnt`、`duty`、`duty_dir`、`duty_step_acc`、`period`、`freq_pwm_cnt`、`freq_step_acc` 全部初始化。本模块没有复位端口，使用 `initial` 设置 FPGA 上电初值，Vivado 可综合该写法。
 
 ## 模块四：breath_pwm.v（呼吸灯）
 
@@ -328,7 +332,7 @@ module breath_pwm
 )
 (
     input  wire clk,        // 系统时钟
-    output wire f_oc1          // f_oc1 输出 (1=亮, 0=灭)
+    output wire f_oc1          // FPGA 管脚电平；LED 亮灭由外部接法决定
 );
 
     localparam PWM_MAX = (1 << PWM_WIDTH) - 1;              // PWM 最大计数值
@@ -381,13 +385,13 @@ module breath_pwm
     end
 
     // PWM 输出 - 比较器
-    // pwm_cnt < duty 时 f_oc1 亮，否则灭
+    // 比较成立时 f_oc1=0；外部亮灭极性需按驱动电路确认
     assign f_oc1 = ~(pwm_cnt < duty);
 ```
 
 默认参数下：`PWM_MAX = 1023`、`TOTAL_STEPS = 2 * (PWM_MAX + 1) = 2048`、`STEP_CLKS = (CLK_FREQ / 1000 * BREATH_MS) / TOTAL_STEPS = 97656`、`STEP_CNT_W = $clog2(STEP_CLKS) = 17`，载波频率 `CLK_FREQ / (PWM_MAX + 1)` 约 97.66 kHz。
 
-源文件注释里那句"远超人眼闪烁感知"解释了为什么载波要走这么快：人眼看到的是 97.66 kHz 方波的平均值，也就是占空比对应的亮度；载波本身快到看不出来，只有占空比的缓慢变化才表现为"呼吸"。
+这里用较高载波频率，让亮度主要体现占空比变化：人眼看到的是 97.66 kHz 方波的平均值，也就是占空比对应的亮度；载波本身快到看不出来，只有占空比的缓慢变化才表现为"呼吸"。
 
 ### 四个模块的默认参数一览
 
@@ -472,7 +476,7 @@ PERIOD_COUNT = 100000000 / PWM_FREQ_HZ
 ```text
 频率 ≈ PWM_FREQ_HZ
 高电平占空比 ≈ DUTY_PERCENT
-幅度：低电平接近 0 V，高电平接近 OC_VCC1
+幅度：低电平由驱动器饱和压降和负载决定，高电平接近 OC_VCC1
 ```
 
 例如 1 kHz、25%：
@@ -483,7 +487,7 @@ PERIOD_COUNT = 100000000 / PWM_FREQ_HZ
 低电平宽度 ≈ 750 us
 ```
 
-第 4 步是这几组里最"紧"的：周期只有 10 us。源文档对高频下的现象说得很明确——由于 ULN2803、上拉电阻、负载电容和示波器探头会影响上升/下降时间，高频时边沿会比 RTL 仿真更缓慢，占空比也可能出现小幅偏差。所以前几步对不上，先怀疑接线、上拉电源和参数；第 4 步的偏差先看边沿是不是已经被拖成梯形，再决定要不要动 RTL。
+第 4 步是这几组里最"紧"的：周期只有 10 us。在高频下有一个必须注意的物理现象——由于 ULN2803、上拉电阻、负载电容和示波器探头会影响上升/下降时间，高频时边沿会比 RTL 仿真更缓慢，占空比也可能出现小幅偏差。所以前几步对不上，先怀疑接线、上拉电源和参数；第 4 步的偏差先看边沿是不是已经被拖成梯形，再决定要不要动 RTL。
 
 ## 仿真结果
 
@@ -509,9 +513,9 @@ PERIOD_COUNT = 100000000 / PWM_FREQ_HZ
     wire physical_oc5 = ~f_oc5;
 ```
 
-判定分三层：先在一个完整周期里数高低电平的个数有没有 X/Z，再比 300 / 700，最后用两个物理上升沿量周期和高电平宽度（期望分别是 10000 ns 和 3000 ns）。README 第 8 节记录的期望值是：周期 10 us、物理高电平宽度 3 us、每周期物理高电平 300 个时钟、每周期物理低电平 700 个时钟。这四行彼此自洽：`100 MHz / 100 kHz = 1000` 个时钟一个周期；30% × 1000 = 300 个时钟高电平、700 个低电平；300 个 10 ns 就是 3 us。
+判定分三层：先在一个完整周期里数高低电平的个数有没有 X/Z，再比 300 / 700，最后用两个物理上升沿量周期和高电平宽度（期望分别是 10000 ns 和 3000 ns）。设计的期望值是：周期 10 us、物理高电平宽度 3 us、每周期物理高电平 300 个时钟、每周期物理低电平 700 个时钟。这四行彼此自洽：`100 MHz / 100 kHz = 1000` 个时钟一个周期；30% × 1000 = 300 个时钟高电平、700 个低电平；300 个 10 ns 就是 3 us。
 
-源目录里的 `pwm_tb.out` 是 Icarus Verilog 的 vvp 编译产物（文件头是 `:ivl_version "12.0"`），不是运行日志。它能佐证的是编译进去的常量和判定字符串：
+工程目录里的 `pwm_tb.out` 是 Icarus Verilog 的 vvp 编译产物（文件头是 `:ivl_version "12.0"`），它能佐证编译进去的常量和判定字符串：
 
 ```text
 :ivl_version "12.0 (devel)" "(s20150603-1539-g2693dd32b)";
@@ -529,7 +533,7 @@ P_... .param/l "COUNTER_WIDTH" 1 4 30, +C4<00000000000000000000000000001010>;   
 %vpi_call/w ... "$display", "PASS: period=%0d ns, high width=%0d ns", ...
 ```
 
-这几行参数常量本身就是一次核对：`PERIOD_COUNT = 1000`、`HIGH_COUNT = 300`、`COUNTER_WIDTH = 10`，正好等于 `100 MHz / 100 kHz`、30% × 1000 和 `$clog2(1000)`。**但这些只是编译进产物的常量，不等于仿真真的跑出了 PASS。** README 第 8 节的结论是"已使用 Icarus Verilog 编译运行并通过检查"。
+这些常量与公式一致：`PERIOD_COUNT=1000`、`HIGH_COUNT=300`、`COUNTER_WIDTH=10`。已有工程测试说明记载 Icarus Verilog 检查通过，但本文片段是编译产物，不是运行日志；其中出现 PASS 字符串不能单独证明运行通过。
 
 ## 踩过的坑
 
@@ -539,7 +543,7 @@ P_... .param/l "COUNTER_WIDTH" 1 4 30, +C4<00000000000000000000000000001010>;   
 
 **2. 不给 OC_VCC1 上拉，就什么波形都没有；地夹再接错，就是短路。**
 
-OC5 是开集电极：FPGA 侧只能把线拉低，"高"必须靠外部上拉产生。所以接线表里第一行不是信号线，而是上拉电源。源文档把这句话放在接线一节的第一句：必须给 OC_VCC1 提供上拉电源，否则 OC5 不能形成正常高电平。另外两个"不要"（不要把电源正负极接反，也不要把示波器地夹接到 OC5）也是同一节的原文：地夹应该接 SCSI1-29（GND），探头尖端接 SCSI1-22（OC5）。
+OC5 是开集电极：FPGA 侧只能把线拉低，"高"必须靠外部上拉产生。所以接线表里第一行不是信号线，而是上拉电源——必须给 OC_VCC1 提供上拉电源，否则 OC5 不能形成正常高电平。另外两个"不要"也同样关键：不要把电源正负极接反，也不要把示波器地夹接到 OC5；地夹应该接 SCSI1-29（GND），探头尖端接 SCSI1-22（OC5）。
 
 **3. 参数改完没重新综合。**
 
@@ -551,11 +555,11 @@ OC5 是开集电极：FPGA 侧只能把线拉低，"高"必须靠外部上拉产
 
 **5. 三个模块的输出端口是 f_oc1，不是 f_oc5。**
 
-`pwm_generator_top.v` 的输出是 `f_oc5`（AC24），而 `freq_sweep_pwm.v`、`duty_freq_sweep_pwm.v`、`breath_pwm.v` 的输出都是 `f_oc1`。源目录里只有 `pwm_generator_top.xdc` 这一份约束。把后三个模块直接拿来上板，需要在约束里补上 OC1 那一跳的管脚，或者把输出改到已约束的 `f_oc5`。
+`pwm_generator_top.v` 的输出是 `f_oc5`（AC24），而 `freq_sweep_pwm.v`、`duty_freq_sweep_pwm.v`、`breath_pwm.v` 的输出都是 `f_oc1`。原实验工程中只记录了 `pwm_generator_top.xdc` 这一份约束。把后三个模块直接拿来上板，需要在约束里补上 OC1 那一跳的管脚，或者把输出改到已约束的 `f_oc5`。
 
 **6. 用管脚输出直接点灯，亮度可能是反的。**
 
-三个扫描模块的输出都带取反（`~`），而 `breath_pwm.v` 的端口注释写"1=亮, 0=灭"，`freq_sweep_pwm.v` 的注释却写"1=灭/低有效"。两者字面相反，源文件里唯一确定的是表达式里的那个 `~`。接 LED 之前先用示波器确认有效电平，别凭注释接线。
+三个扫描模块的输出都带取反（`~`）。本文示例注释已统一为管脚逻辑：比较成立时输出为 0。经 ULN2803 后物理 OC 电平再次取反；直接接 LED 时，亮灭还取决于接法，不能仅凭管脚名判断。
 
 **7. 排查清单。**
 
@@ -565,13 +569,13 @@ OC5 是开集电极：FPGA 侧只能把线拉低，"高"必须靠外部上拉产
 | 频率对，占空比是 100 − 参数值 | 大概率在数管脚 `f_oc5` 而不是物理 OC5；物理端已被 ULN2803 反相补偿过 |
 | 频率差一点点 | 目标频率除不尽 100 MHz，用 `实际频率 = 100000000 / PERIOD_COUNT` 重算 |
 | 改了参数波形没变 | 参数是综合期的，重新综合 + 实现 + Generate Bitstream + 下载 |
-| 高频时占空比有偏差、边沿变缓 | ULN2803、上拉电阻、负载电容、探头共同作用，属源文档已说明的现象 |
+| 高频时占空比有偏差、边沿变缓 | ULN2803、上拉电阻、负载电容、探头共同作用，应先核对负载与模拟边沿，不能只改 RTL |
 | ILA 里找不到想看的信号 | `pwm_counter` 和 `pwm_level` 才有 `MARK_DEBUG`；`pwm_level` 另有 `KEEP` |
-| `f_oc1` 上没有波形 | 后三个模块的输出端口是 `f_oc1`，而源目录只给了 `f_oc5`(AC24) 的约束 |
+| `f_oc1` 上没有波形 | 后三个模块的输出端口是 `f_oc1`，而原实验工程只记录了 `f_oc5`(AC24) 的约束 |
 
 ## 下一步
 
-- 把这四份 RTL 里"低有效/高有效"的说法统一一次：目前 `breath_pwm.v` 的端口注释写"1=亮, 0=灭"，`freq_sweep_pwm.v` 写"1=灭/低有效"，而两者代码都是 `~`。先定下物理语义，再改注释。
-- 给 `f_oc1` 这一路补约束（管脚 + IOSTANDARD + DRIVE/SLEW），或者把三个扫描模块的输出统一改到已约束的 `f_oc5`，否则后三种玩法只能靠默认管脚上板。
+- 改接 LED 或其他驱动级时，分别核对 FPGA 管脚电平、驱动器反相与负载有效电平，保持注释和接法一致。
+- 给 `f_oc1` 这一路补约束（管脚 + IOSTANDARD + DRIVE/SLEW），或者把三个扫描模块的输出统一改到已约束的 `f_oc5`，不要依赖未约束 I/O 的默认分配。
 - 把 `freq_sweep_pwm.v` 里 `STEP_CLKS` 的整数截断换成 `duty_freq_sweep_pwm.v` 那个累加器写法，让两个模块的扫描时长口径一致。
 - 给 `breath_pwm.v` 补一个 `initial` 块（或声明处初值），把上电起点从"器件默认值"变成"代码里写明的东西"。
