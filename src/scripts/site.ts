@@ -1,5 +1,8 @@
 const toggle = document.querySelector<HTMLButtonElement>('#theme-toggle');
 function syncThemeLabel() {
+  document.querySelector('meta[name="theme-color"]')?.setAttribute(
+    'content', document.documentElement.dataset.theme === 'dark' ? '#19171f' : '#fbfaf7',
+  );
   toggle?.setAttribute(
     'aria-label',
     document.documentElement.dataset.theme === 'dark'
@@ -43,6 +46,11 @@ menu?.addEventListener('click', () => {
   menu.setAttribute('aria-expanded', String(!expanded));
   menu.setAttribute('aria-label', expanded ? '展开导航' : '收起导航');
   mobileNav.hidden = expanded;
+});
+
+mobileNav?.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu));
+matchMedia('(min-width: 801px)').addEventListener('change', (event) => {
+  if (event.matches) closeMenu();
 });
 
 const isApple = /Macintosh|Mac OS X|iPhone|iPad|iPod/i.test(

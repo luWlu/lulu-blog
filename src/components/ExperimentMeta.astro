@@ -3,10 +3,10 @@ import { dateLabel, stepLabel } from '../lib/site';
 interface Props { stage: string; status: string; board: string; tools: string[]; date: Date; order: number; }
 const { stage, status, board, tools, date, order } = Astro.props;
 ---
-<div class="experiment-spec">
-  <div><span>学习路径</span><strong>{stepLabel(order)} · {stage}</strong></div>
-  <div><span>硬件平台</span><strong>{board}</strong></div>
-  <div><span>状态</span><strong>{status}</strong></div>
-  <div><span>完成日期</span><strong>{dateLabel(date)}</strong></div>
-  {tools.length > 0 && <div><span>工具与仪器</span><strong>{tools.join(' · ')}</strong></div>}
-</div>
+<dl class:list={['experiment-spec', 'experiment-spec--details', { 'experiment-spec--with-tools': tools.length > 0 }]} aria-label="实验信息">
+  <div class="experiment-spec-path"><dt>学习路径</dt><dd>{stepLabel(order)} · {stage}</dd></div>
+  <div class="experiment-spec-board"><dt>硬件平台</dt><dd>{board}</dd></div>
+  <div class="experiment-spec-status"><dt>状态</dt><dd>{status}</dd></div>
+  <div class="experiment-spec-date"><dt>完成日期</dt><dd><time datetime={date.toISOString()}>{dateLabel(date)}</time></dd></div>
+  {tools.length > 0 && <div class="experiment-spec-tools"><dt>工具与仪器</dt><dd>{tools.join(' · ')}</dd></div>}
+</dl>

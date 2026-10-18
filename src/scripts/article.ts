@@ -10,6 +10,33 @@ const headings = Array.from(
   article?.querySelectorAll<HTMLElement>('h2[id], h3[id]') ?? [],
 ).filter((heading) => headingIds.has(heading.id));
 const mobileToc = document.querySelector<HTMLDetailsElement>('.mobile-toc');
+const siteHeader = document.querySelector<HTMLElement>('.site-header');
+const tableRegions: { element: HTMLDivElement; label: string }[] = [];
+
+article?.querySelectorAll<HTMLTableElement>('table').forEach((table, index) => {
+  if (table.parentElement?.classList.contains('table-scroll')) return;
+  const element = document.createElement('div');
+  element.className = 'table-scroll';
+  const label = table.caption?.textContent?.trim() || `数据表格 ${index + 1}`;
+  table.before(element);
+  element.append(table);
+  tableRegions.push({ element, label });
+});
+
+function updateTableAccess() {
+  for (const { element, label } of tableRegions) {
+    const overflowing = element.scrollWidth > element.clientWidth + 1;
+    if (overflowing) {
+      element.tabIndex = 0;
+      element.setAttribute('role', 'region');
+      element.setAttribute('aria-label', `${label}，可横向滚动`);
+    } else {
+      element.removeAttribute('tabindex');
+      element.removeAttribute('role');
+      element.removeAttribute('aria-label');
+    }
+  }
+}
 
 article?.querySelectorAll<HTMLPreElement>('pre').forEach((pre, index) => {
   const code = pre.querySelector('code');
@@ -75,17 +102,18 @@ function updateReading() {
   frame = 0;
   if (!article || document.hidden) return;
   const bounds = article.getBoundingClientRect();
-  const distance = bounds.height - window.innerHeight;
+  const readingTop = Math.max(0, siteHeader?.getBoundingClientRect().bottom ?? 0) + 24;
+  const distance = bounds.height - (window.innerHeight - readingTop);
   const fraction =
     distance > 0
-      ? Math.min(1, Math.max(0, -bounds.top / distance))
+      ? Math.min(1, Math.max(0, (readingTop - bounds.top) / distance))
       : bounds.bottom <= window.innerHeight
         ? 1
         : 0;
   if (progress) progress.style.transform = `scaleX(${fraction})`;
   let current = headings[0]?.id ?? '';
   for (const heading of headings) {
-    if (heading.getBoundingClientRect().top > 128) break;
+    if (heading.getBoundingClientRect().top > readingTop + 1) break;
     current = heading.id;
   }
   if (bounds.bottom <= window.innerHeight && headings.length)
@@ -115,9 +143,15 @@ function scheduleReading() {
   if (!frame) frame = requestAnimationFrame(updateReading);
 }
 window.addEventListener('scroll', scheduleReading, { passive: true });
-window.addEventListener('resize', scheduleReading, { passive: true });
+window.addEventListener('resize', () => {
+  updateTableAccess();
+  scheduleReading();
+}, { passive: true });
 window.addEventListener('hashchange', scheduleReading);
-window.addEventListener('pageshow', scheduleReading);
+window.addEventListener('pageshow', () => {
+  updateTableAccess();
+  scheduleReading();
+});
 window.addEventListener('pagehide', () => {
   cancelAnimationFrame(frame);
   frame = 0;
@@ -133,6 +167,22 @@ article
   .forEach((image) =>
     image.addEventListener('load', scheduleReading, { once: true }),
   );
+if (typeof ResizeObserver !== 'undefined' && article) {
+  const observer = new ResizeObserver(() => {
+    updateTableAccess();
+    scheduleReading();
+  });
+  observer.observe(article);
+  for (const { element } of tableRegions) {
+    observer.observe(element);
+    if (element.firstElementChild) observer.observe(element.firstElementChild);
+  }
+}
+document.fonts?.ready.then(() => {
+  updateTableAccess();
+  scheduleReading();
+});
+updateTableAccess();
 scheduleReading();
 
 export {};

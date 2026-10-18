@@ -116,7 +116,7 @@ const articleSchema = article && canonical ? {
 <style>
   .search-dialog :global(.search-result.is-selected) { background: var(--purple-soft); }
   @media (max-width: 420px) {
-    .search-dialog-footer { gap: 10px; align-items: center; font-size: 9px; }
+    .search-dialog-footer { gap: 10px; align-items: center; font-size: var(--text-label); flex-wrap: wrap; }
     .search-dialog-footer > span:last-child { white-space: nowrap; }
   }
 </style>

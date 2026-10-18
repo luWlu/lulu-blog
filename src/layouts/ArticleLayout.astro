@@ -45,11 +45,13 @@ const kindLabel = kindLabels[kind];
     {sample && <div class="sample-notice article-sample"><span class="tiny-dot"></span> 这是一篇用于预览的示例，不代表 lulu 已有的学习经历或项目成果。</div>}
     {toc.length > 0 && <details class="mobile-toc">
       <summary>文章目录 <span>{toc.length} 个章节</span></summary>
-      <nav aria-label="文章目录（移动端）">
-        {toc.map(heading => <a href={`#${heading.slug}`} data-toc-link={heading.slug} class:list={{ 'toc-sub': heading.depth === 3 }}>{heading.text}</a>)}
-      </nav>
+      <div class="mobile-toc-scroll">
+        <nav class="toc-list" aria-label="文章目录（移动端）">
+          {toc.map(heading => <a href={`#${heading.slug}`} data-toc-link={heading.slug} class:list={{ 'toc-sub': heading.depth === 3 }}>{heading.text}</a>)}
+        </nav>
+      </div>
     </details>}
-    <div class="article-grid">
+    <div class:list={['article-grid', { 'article-grid--full': toc.length === 0 }]}>
       <article class="prose" data-article-content>
         <slot />
         {(repository || demo) && <div class="project-external-links">
@@ -61,7 +63,7 @@ const kindLabel = kindLabels[kind];
       {toc.length > 0 && <aside class="article-toc" aria-label="文章目录">
         <div class="toc-inner">
           <h2>{kind === 'experiments' ? '这个实验的目录' : '这篇手记的坐标'}</h2>
-          <nav>{toc.map(heading => <a href={`#${heading.slug}`} data-toc-link={heading.slug} class:list={{ 'toc-sub': heading.depth === 3 }}>{heading.text}</a>)}</nav>
+          <nav class="toc-list" aria-label="文章章节">{toc.map(heading => <a href={`#${heading.slug}`} data-toc-link={heading.slug} class:list={{ 'toc-sub': heading.depth === 3 }}>{heading.text}</a>)}</nav>
           <a class="toc-back" href="#main">回到顶部 ↑</a>
         </div>
       </aside>}

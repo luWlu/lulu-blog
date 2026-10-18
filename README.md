@@ -138,7 +138,7 @@ src/content/notes/
 - 实验列表页导语、分组说明与学习路径：`src/pages/experiments/index.astro`。
 - 实验详情页信息栏（平台/状态/工具）：`src/components/ExperimentMeta.astro`。
 - 实验卡片：`src/components/ExperimentCard.astro`；实验相关样式在 `src/styles/global.css` 末尾「实验记录」一段。
-- 配色、字体与文章布局：`src/styles/global.css`；首页布局：`src/styles/home.css`。字体使用系统字体，不请求第三方字体服务。
+- 配色、字体与文章布局：`src/styles/global.css`；首页布局：`src/styles/home.css`。中文使用系统字体；署名衬线与代码等宽字体使用本地托管的 Instrument Serif / JetBrains Mono，不请求第三方字体服务。字体及 OFL 授权见 `src/assets/fonts/`。字号、卡片圆角与明暗主题统一由全局变量维护。
 - 站点图标：`public/favicon.svg`。
 - 社交分享图：[public/social-card.png](public/social-card.png)，1200 × 630；[SVG 原稿](public/social-card.svg) 保留用于编辑。修改图稿后需同步导出 PNG。
 - 导航、页脚与页面元信息：`src/layouts/Layout.astro`。

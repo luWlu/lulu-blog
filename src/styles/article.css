@@ -9,26 +9,271 @@
   pointer-events: none;
 }
 
-.mobile-toc {
+.article-page {
+  --article-header-height: 88px;
+  --article-sticky-top: calc(var(--header-height, var(--article-header-height)) + 24px);
+}
+
+/* 正文与辅助信息保持清晰的字号层级，不改变内容本身的结构。 */
+.article-page .prose {
+  font-size: 16px;
+  line-height: 1.9;
+}
+
+.article-page .prose p {
+  margin-block: 18px;
+}
+
+.article-page .prose h2 {
+  line-height: 1.55;
+  margin-block: 40px 16px;
+}
+
+.article-page .prose h3 {
+  line-height: 1.65;
+  margin-block: 29px 13px;
+}
+
+.article-page .prose > :first-child {
+  margin-top: 0;
+}
+
+.article-page .article-description {
+  font-size: 15px;
+  line-height: 1.85;
+}
+
+.article-page .article-meta,
+.article-page .article-tags span,
+.article-page .article-eyebrow .category-pill,
+.article-page .article-sample {
+  font-size: 12px;
+}
+
+.article-page .article-eyebrow .sample-label {
+  font-size: 11px;
+}
+
+.article-page .article-grid--full {
+  grid-template-columns: minmax(0, 780px);
+}
+
+/* 目录轨道与指示条共享同一位置，激活时不改变文字宽度或缩进。 */
+.article-page .article-toc {
+  top: var(--article-sticky-top);
+  max-height: calc(100vh - var(--article-sticky-top) - 24px);
+  max-height: calc(100dvh - var(--article-sticky-top) - 24px);
+  border-left: 0;
+  padding-left: 0;
+  scrollbar-width: thin;
+}
+
+.article-page .article-toc h2 {
+  padding-left: 18px;
+  font-size: 12px;
+}
+
+.article-page .toc-list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0 0 0 18px;
+}
+
+.article-page .toc-list::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 1px;
+  width: 1px;
+  background: var(--line);
+}
+
+.article-page .toc-list a {
+  position: relative;
+  display: block;
+  padding: 6px 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+  transition: color 180ms ease;
+}
+
+.article-page .toc-list a.toc-sub {
+  padding-left: 12px;
+  font-size: 11px;
+}
+
+.article-page .toc-list a::before {
+  content: '';
+  position: absolute;
+  inset: 6px auto 6px -18px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--purple);
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.article-page .toc-list a:hover,
+.article-page .toc-list a.is-active {
+  color: var(--purple-dark);
+}
+
+.article-page .toc-list a.is-active::before {
+  opacity: 1;
+}
+
+.article-page .toc-back {
+  margin-left: 18px;
+  font-size: 12px;
+}
+
+.article-page .mobile-toc {
   display: none;
 }
 
-.article-toc nav a.is-active,
-.mobile-toc nav a.is-active {
-  color: var(--purple-dark);
-  font-weight: 650;
+/* 长字段优先获得空间，五个字段不会留下未占用的网格。 */
+.article-page .experiment-spec--details {
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1.4fr);
+  grid-template-areas:
+    'path status'
+    'board board'
+    'date date';
+  margin: 0 0 32px;
+  border-radius: var(--radius-md, 12px);
 }
 
-.article-toc nav a.is-active {
-  border-left: 2px solid var(--purple);
-  padding-left: 10px;
+.article-page .experiment-spec--with-tools {
+  grid-template-areas:
+    'path status'
+    'board board'
+    'date tools';
 }
 
-.prose .code-block {
+.article-page .experiment-spec--details > div {
+  min-width: 0;
+  padding: 15px 18px;
+}
+
+.article-page .experiment-spec-path { grid-area: path; }
+.article-page .experiment-spec-board { grid-area: board; }
+.article-page .experiment-spec-status { grid-area: status; }
+.article-page .experiment-spec-date { grid-area: date; }
+.article-page .experiment-spec-tools { grid-area: tools; }
+
+.article-page .experiment-spec--details dt {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.article-page .experiment-spec--details dd {
+  margin: 6px 0 0;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.article-page .experiment-nav span {
+  font-size: 11px;
+  letter-spacing: .04em;
+}
+
+.article-page .experiment-nav strong {
+  font-size: 14px;
+}
+
+/* 没有脚本时，表格本身也能横向滚动；脚本只增强容器和键盘访问。 */
+.article-page .prose table {
+  display: block;
+  max-width: 100%;
+  width: 100%;
+  margin: 24px 0;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: var(--radius-md, 12px);
+  background: var(--surface);
+  font-size: 13px;
+  line-height: 1.75;
+  overflow-wrap: normal;
+}
+
+.article-page .prose th,
+.article-page .prose td {
+  min-width: 8em;
+  padding: 11px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.article-page .prose th {
+  font-weight: 600;
+}
+
+.article-page .prose tbody:last-child tr:last-child td,
+.article-page .prose tfoot:last-child tr:last-child td {
+  border-bottom: 0;
+}
+
+.article-page .prose table caption {
+  padding: 12px 14px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: left;
+}
+
+.article-page .table-scroll {
+  max-width: 100%;
+  margin: 24px 0;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 12px);
+  background: var(--surface);
+  scrollbar-width: thin;
+}
+
+.article-page .table-scroll > table {
+  display: table;
+  max-width: none;
+  margin: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+}
+
+.article-page .prose figure.diagram {
+  border-radius: var(--radius-md, 12px);
+  background-color: var(--surface);
+  background-image: radial-gradient(color-mix(in srgb, var(--line) 70%, transparent) .75px, transparent .75px);
+  background-size: 18px 18px;
+}
+
+.article-page .prose figure.diagram figcaption {
+  max-width: 70ch;
+  margin: 16px auto 0;
+  font-size: 12px;
+  line-height: 1.75;
+  text-wrap: pretty;
+}
+
+.article-page .prose pre {
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.article-page .prose .code-block {
   min-width: 0;
   margin: 24px 0;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: var(--radius-md, 12px);
   background: var(--surface-soft);
   overflow: hidden;
 }
@@ -47,17 +292,17 @@
 
 .code-language {
   color: var(--muted);
-  font: 11px var(--mono);
+  font: 12px var(--mono);
 }
 
 .code-copy {
-  min-height: 32px;
+  min-height: 34px;
   padding: 6px 10px;
   border: 1px solid var(--line);
-  border-radius: 5px;
+  border-radius: var(--radius-sm, 6px);
   color: var(--purple-dark);
   background: var(--purple-soft);
-  font-size: 11px;
+  font-size: 12px;
   white-space: nowrap;
 }
 
@@ -69,22 +314,26 @@
   outline-offset: 2px;
 }
 
-.prose .code-block pre {
+.article-page .prose .code-block pre {
   margin: 0;
   border: 0;
   border-radius: 0;
 }
 
 @media (max-width: 800px) {
-  .mobile-toc {
+  .article-page {
+    --article-header-height: 76px;
+  }
+
+  .article-page .mobile-toc {
     display: block;
     margin-top: 28px;
     border: 1px solid var(--line);
-    border-radius: 9px;
+    border-radius: var(--radius-md, 12px);
     background: var(--surface);
   }
 
-  .mobile-toc summary {
+  .article-page .mobile-toc summary {
     padding: 13px 17px;
     color: var(--purple-dark);
     font-size: 13px;
@@ -92,42 +341,99 @@
     cursor: pointer;
   }
 
-  .mobile-toc summary > span {
+  .article-page .mobile-toc summary > span {
     margin-left: 12px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 400;
     color: var(--muted);
   }
 
-  .mobile-toc nav {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
+  .article-page .mobile-toc-scroll {
     max-height: 52vh;
     max-height: 52dvh;
     overflow-y: auto;
-    padding: 4px 17px 17px;
+    scrollbar-width: thin;
+  }
+
+  .article-page .mobile-toc .toc-list {
+    margin: 0 17px 17px;
+    padding-top: 10px;
     border-top: 1px solid var(--line);
   }
 
-  .mobile-toc nav a {
-    padding: 8px 0;
-    color: var(--muted);
-    font-size: 12px;
-    line-height: 1.7;
+  .article-page .mobile-toc .toc-list::before {
+    top: 10px;
   }
 
-  .mobile-toc nav a.toc-sub {
-    padding-left: 14px;
-    font-size: 11px;
+  .article-page .mobile-toc .toc-list a {
+    padding-block: 8px;
   }
 }
 
 @media (max-width: 640px) {
-  .code-toolbar {
+  .article-page {
+    --article-header-height: 70px;
+  }
+
+  .article-page .prose {
+    font-size: 15px;
+    line-height: 1.9;
+  }
+
+  .article-page .prose h2 {
+    margin-block: 32px 14px;
+  }
+
+  .article-page .article-description {
+    font-size: 14px;
+  }
+
+  .article-page .prose pre {
+    font-size: 12px;
+  }
+
+  .article-page .prose table {
+    font-size: 12px;
+  }
+
+  .article-page .prose th,
+  .article-page .prose td {
+    padding: 10px 12px;
+  }
+
+  .article-page .prose figure.diagram {
+    padding: 16px 12px;
+  }
+
+  .article-page .experiment-spec--details > div {
+    padding: 13px 15px;
+  }
+
+  .article-page .code-toolbar {
     padding: 5px 9px;
   }
-  .code-copy {
+
+  .article-page .code-copy {
     min-height: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .article-page .experiment-spec--details {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'path'
+      'board'
+      'status'
+      'date';
+  }
+
+  .article-page .experiment-spec--with-tools {
+    grid-template-areas:
+      'path'
+      'board'
+      'status'
+      'date'
+      'tools';
   }
 }
