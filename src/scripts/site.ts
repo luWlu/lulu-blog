@@ -313,6 +313,24 @@ if (
   });
 }
 
+// 封面线稿：进入视口时把主线条描出来，每张只播放一次。
+if (!reducedMotion.matches && 'IntersectionObserver' in window) {
+  const coverObserver = new IntersectionObserver(
+    (observed) => {
+      for (const entry of observed) {
+        if (!entry.isIntersecting) continue;
+        entry.target.classList.replace('is-pending', 'is-drawn');
+        coverObserver.unobserve(entry.target);
+      }
+    },
+    { threshold: 0.35 },
+  );
+  document.querySelectorAll('.cover').forEach((cover) => {
+    cover.classList.add('is-pending');
+    coverObserver.observe(cover);
+  });
+}
+
 // 回到顶部：滚过一屏半后出现。
 const backToTop = document.querySelector<HTMLButtonElement>('.back-to-top');
 if (backToTop) {

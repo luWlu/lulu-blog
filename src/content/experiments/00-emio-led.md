@@ -10,6 +10,7 @@ tools: ["Vivado", "Vitis"]
 tags: ["Zynq", "EMIO", "GPIO", "点灯"]
 accent: "purple"
 diagram: "board"
+cover: "led"
 draft: false
 sample: false
 ---

@@ -28,3 +28,4 @@ export async function allExperiments() {
 
 export const experimentStages = ['前置', '基础', '进阶'] as const;
 export const stepLabel = (order: number) => `STEP ${String(order).padStart(2, '0')}`;
+export { shortTitle } from './short-title';

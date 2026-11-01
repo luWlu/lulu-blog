@@ -10,6 +10,7 @@ tools: ["Vivado", "Icarus Verilog", "信号发生器", "示波器"]
 tags: ["Zynq", "脉宽测量", "频率计", "计数器", "ILA"]
 accent: "lime"
 diagram: "wave"
+cover: "pulse"
 draft: false
 sample: false
 ---

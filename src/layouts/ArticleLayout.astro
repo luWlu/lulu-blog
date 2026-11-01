@@ -23,6 +23,9 @@ const { title, description, date, tags, sample, kind, headings, body = '', categ
 const toc = headings.filter(heading => heading.depth === 2 || heading.depth === 3);
 const kindLabels = { notes: '学习记录', projects: '项目展示', experiments: '实验记录' } as const;
 const kindLabel = kindLabels[kind];
+// 标题里的括号补充说明整体换行，不让均衡换行把「AD 采集」这类词从中间断开。
+const asideAt = title.indexOf('（');
+const [titleMain, titleAside] = asideAt > 0 ? [title.slice(0, asideAt), title.slice(asideAt)] : [title, ''];
 ---
 <Layout title={title} description={description} active={kind} noindex={sample} article={{ date, tags }}>
   <div class="article-reading-progress" aria-hidden="true"></div>
@@ -33,7 +36,7 @@ const kindLabel = kindLabels[kind];
         <span class="category-pill">{category || kindLabel}</span>
         {sample ? <span class="sample-label">示例内容</span> : status && <span class="sample-label">{status}</span>}
       </div>
-      <h1>{title}</h1>
+      <h1>{titleMain}{titleAside && <span class="title-aside">{titleAside}</span>}</h1>
       <p class="article-description">{description}</p>
       <div class="article-meta">
         <span class="author-badge">l</span><span>{site.author}</span><span class="meta-dot">·</span>

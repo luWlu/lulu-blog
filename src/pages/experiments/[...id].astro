@@ -3,7 +3,7 @@ import { render } from 'astro:content';
 import { allExperiments, url, stepLabel } from '../../lib/site';
 import ArticleLayout from '../../layouts/ArticleLayout.astro';
 import ExperimentMeta from '../../components/ExperimentMeta.astro';
-import ProjectArt from '../../components/ProjectArt.astro';
+import Cover from '../../components/Cover.astro';
 export async function getStaticPaths() {
   const experiments = await allExperiments();
   return experiments.map((experiment, index) => ({
@@ -15,7 +15,7 @@ const { experiment, prev, next } = Astro.props;
 const { Content, headings } = await render(experiment);
 ---
 <ArticleLayout {...experiment.data} kind="experiments" headings={headings} body={experiment.body} category={`${stepLabel(experiment.data.order)} · ${experiment.data.stage}`}>
-  <div class:list={['article-project-art', `accent-${experiment.data.accent}`]}><ProjectArt diagram={experiment.data.diagram} /></div>
+  <div class:list={['article-project-art', `accent-${experiment.data.accent}`]} style={`view-transition-name: cover-${experiment.id}`}><Cover name={experiment.data.cover} diagram={experiment.data.diagram} /></div>
   <ExperimentMeta stage={experiment.data.stage} status={experiment.data.status} board={experiment.data.board} tools={experiment.data.tools} date={experiment.data.date} order={experiment.data.order} />
   <Content />
   {(prev || next) && <nav class="experiment-nav" aria-label="实验顺序导航">

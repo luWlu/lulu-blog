@@ -10,6 +10,7 @@ tools: ["Vivado 2020.2", "Icarus Verilog", "Node.js", "示波器", "万用表"]
 tags: ["Zynq", "DA输出", "DAC8871", "DDS", "波形发生"]
 accent: "lime"
 diagram: "wave"
+cover: "dac"
 draft: false
 sample: false
 ---

@@ -1,0 +1,137 @@
+---
+// 文章专属封面：每个实验一张手绘风线稿，画的就是这个实验本身（点灯、继电器、采样、DDS…）。
+// 没有专属封面的内容回落到 ProjectArt 的三张通用插图。
+// .cover-trace 主线条进入视口时「描」出来，.cover-flow 虚线在卡片悬停时流动。
+import ProjectArt from './ProjectArt.astro';
+import { covers, type CoverName } from '../lib/covers';
+
+interface Props { name?: CoverName; diagram?: 'wave' | 'board' | 'circuit'; }
+const { name, diagram = 'board' } = Astro.props;
+
+/** 方波：parts 为 [长度, 电平] 序列，yLow / yHigh 为低、高电平的 y 坐标。 */
+function wave(x: number, yLow: number, yHigh: number, parts: [number, number][]) {
+  let level = parts[0][1];
+  let d = `M${x} ${level ? yHigh : yLow}`;
+  for (const [length, next] of parts) {
+    if (next !== level) { d += `V${next ? yHigh : yLow}`; level = next; }
+    x += length;
+    d += `H${x}`;
+  }
+  return d;
+}
+const repeat = (count: number, parts: [number, number][]) => Array.from({ length: count }, () => parts).flat();
+const fixed = (value: number) => Number(value.toFixed(1));
+
+const clock = wave(270, 50, 38, repeat(11, [[10, 1], [10, 0]]));
+const pwmRows = [0.25, 0.5, 0.75].map((duty, row) => ({
+  duty,
+  y: 40 + row * 50,
+  d: wave(130, 66 + row * 50, 42 + row * 50, repeat(3, [[fixed(100 * duty), 1], [fixed(100 * (1 - duty)), 0]])),
+}));
+
+// AD：带噪声的采样点 + 滤波后的平滑曲线（噪声用固定序列，保证每次构建结果一致）。
+const signal = (x: number) => 100 - 44 * Math.sin(((x - 80) / 360) * Math.PI * 2.4);
+const samples = Array.from({ length: 19 }, (_, i) => {
+  const x = 80 + i * 20;
+  return { x, y: fixed(signal(x) + (((i * 37) % 11) - 5) * 2.2) };
+});
+const smooth = Array.from({ length: 91 }, (_, i) => `${i ? 'L' : 'M'}${80 + i * 4} ${fixed(signal(80 + i * 4))}`).join('');
+
+// DA：DDS 查表输出的阶梯正弦，虚线是重建后的理想波形。
+const sine = (x: number) => 100 - 52 * Math.sin(((x - 70) / 280) * Math.PI * 2);
+let stairs = `M70 ${fixed(sine(70))}`;
+for (let x = 70; x < 350; x += 14) stairs += `H${x + 14}V${fixed(sine(x + 14))}`;
+const ideal = Array.from({ length: 71 }, (_, i) => `${i ? 'L' : 'M'}${70 + i * 4} ${fixed(sine(70 + i * 4))}`).join('');
+
+const ticks = Array.from({ length: 21 }, (_, i) => `M${130 + i * 10} 148v${i % 5 ? 5 : 9}`).join('');
+const caption = name ? covers[name] : '';
+---
+{name ? <div class:list={['project-art', 'cover', `cover-${name}`]} aria-hidden="true">
+  <svg viewBox="0 0 520 200" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <g class="cover-dots" fill="currentColor" stroke="none">{Array.from({ length: 24 }, (_, x) => Array.from({ length: 9 }, (_, y) => <circle cx={10 + x * 22} cy={12 + y * 22} r="1" />))}</g>
+    <text class="cover-caption" x="22" y="28">{caption}</text>
+    {name === 'led' && <>
+      <rect class="cover-trace" pathLength="1" x="70" y="68" width="86" height="64" rx="10" stroke-width="2.4" />
+      <rect class="cover-trace" pathLength="1" x="226" y="68" width="86" height="64" rx="10" stroke-width="2.4" />
+      <text class="cover-label" x="113" y="105" text-anchor="middle">PS</text>
+      <text class="cover-label" x="269" y="105" text-anchor="middle">PL</text>
+      <path class="cover-flow" d="M156 100h70" stroke-width="2.4" />
+      <text class="cover-small" x="191" y="90" text-anchor="middle">EMIO</text>
+      <circle class="cover-glow" cx="378" cy="100" r="28" />
+      <path class="cover-trace" pathLength="1" d="M312 100h52M364 82v36l30-18ZM394 82v36M394 100h64" stroke-width="2.4" />
+      <path class="cover-hot" d="M380 70l10-14m-6 0h6v6M396 74l10-14m-6 0h6v6" stroke-width="2.2" />
+      <path d={clock} stroke-width="1.6" opacity=".55" />
+      <text class="cover-small" x="490" y="30" text-anchor="end">1 s 翻转</text>
+    </>}
+    {name === 'relay' && <>
+      <path class="cover-trace" pathLength="1" d="M60 100h48M108 80v40l34-20ZM150 100h50" stroke-width="2.4" />
+      <circle cx="146" cy="100" r="4" stroke-width="2" />
+      <rect class="cover-trace" pathLength="1" x="200" y="76" width="76" height="48" rx="8" stroke-width="2.4" />
+      <path d="M212 100c0-12 9-12 9 0s9 12 9 0 9-12 9 0 9 12 9 0 9-12 9 0 9 12 9 0" stroke-width="2" />
+      <path class="cover-flow" d="M238 76V58h86" stroke-width="1.8" />
+      <path class="cover-trace" pathLength="1" d="M276 100h44V72M320 72l66-20M396 72v28h62" stroke-width="2.4" />
+      <circle cx="320" cy="72" r="4" fill="currentColor" stroke="none" /><circle class="cover-hot-fill" cx="396" cy="72" r="4" />
+      <circle cx="458" cy="132" r="16" stroke-width="2.2" /><path d="M447 121l22 22m0-22-22 22M458 100v16" stroke-width="2" />
+      <text class="cover-small" x="60" y="88">3.3V</text><text class="cover-small" x="125" y="140" text-anchor="middle">UL3</text>
+      <text class="cover-small" x="238" y="142" text-anchor="middle">COIL</text><text class="cover-small" x="458" y="170" text-anchor="middle">LOAD</text>
+    </>}
+    {name === 'edge' && <>
+      <path d={clock} stroke-width="1.6" opacity=".55" />
+      <text class="cover-small" x="490" y="30" text-anchor="end">100 MHz</text>
+      <path class="cover-trace" pathLength="1" d="M70 100h96M234 100h32M334 100h40" stroke-width="2.4" />
+      <rect class="cover-trace" pathLength="1" x="166" y="70" width="68" height="60" rx="7" stroke-width="2.4" />
+      <rect class="cover-trace" pathLength="1" x="266" y="70" width="68" height="60" rx="7" stroke-width="2.4" />
+      <path d="M166 114l10 6-10 6M266 114l10 6-10 6" stroke-width="1.8" />
+      <text class="cover-label" x="200" y="104" text-anchor="middle">FF1</text><text class="cover-label" x="300" y="104" text-anchor="middle">FF2</text>
+      <rect class="cover-hot-soft" x="374" y="80" width="64" height="40" rx="7" stroke-width="2.2" /><text class="cover-label" x="406" y="105" text-anchor="middle">EDGE</text>
+      <path d="M70 176h70v-18h300" stroke-width="2" opacity=".7" />
+      <path class="cover-hot" d="M70 192h268v-10h12v10h90" stroke-width="2.2" />
+      <text class="cover-small" x="70" y="150">async in</text>
+    </>}
+    {name === 'pulse' && <>
+      <path class="cover-trace" pathLength="1" d={wave(70, 130, 70, [[60, 0], [120, 1], [80, 0], [120, 1], [70, 0]])} stroke-width="2.8" />
+      <path class="cover-hot" d="M130 56h120M136 50l-6 6 6 6M244 50l6 6-6 6" stroke-width="2" />
+      <text class="cover-small" x="190" y="46" text-anchor="middle">high_count</text>
+      <path d="M130 172h200M136 166l-6 6 6 6M324 166l6 6-6 6" stroke-width="1.8" opacity=".7" />
+      <text class="cover-small" x="230" y="192" text-anchor="middle">period_count</text>
+      <path d={ticks} stroke-width="1.4" opacity=".5" />
+      <rect x="388" y="150" width="104" height="38" rx="7" stroke-width="1.8" opacity=".75" />
+      <text class="cover-small" x="440" y="174" text-anchor="middle">D = 60%</text>
+    </>}
+    {name === 'pwm' && <>
+      {pwmRows.map(row => <>
+        <text class="cover-small" x="70" y={row.y + 20}>{Math.round(row.duty * 100)}%</text>
+        <path class:list={['cover-trace', { 'cover-hot': row.duty === 0.5 }]} pathLength="1" d={row.d} stroke-width="2.6" />
+      </>)}
+      <path class="cover-flow" d="M230 32v156M330 32v156" stroke-width="1.4" />
+      <text class="cover-small" x="452" y="104">CMP</text>
+    </>}
+    {name === 'adc' && <>
+      <path d="M70 168h390" stroke-width="1.4" opacity=".4" />
+      <g opacity=".5" stroke-width="1.2" stroke-dasharray="2 4">{samples.map(point => <path d={`M${point.x} 168V${point.y}`} />)}</g>
+      <g fill="currentColor" stroke="none">{samples.map(point => <circle cx={point.x} cy={point.y} r="3.4" />)}</g>
+      <path class="cover-trace cover-hot" pathLength="1" d={smooth} stroke-width="3" />
+      <text class="cover-small" x="460" y="190" text-anchor="end">LTC2328 · 16 bit</text>
+    </>}
+    {name === 'dac' && <>
+      <path class="cover-flow" d={ideal} stroke-width="1.6" />
+      <path class="cover-trace" pathLength="1" d={stairs} stroke-width="2.6" />
+      <path d="M70 100h280" stroke-width="1.2" opacity=".35" stroke-dasharray="3 5" />
+      <rect x="384" y="44" width="96" height="112" rx="10" stroke-width="1.6" opacity=".5" />
+      <path class="cover-hot" d="M398 80h14V62h20v18h20V62h14" stroke-width="2.2" />
+      <path class="cover-hot" d="M398 136l17-22 17 22 17-22 17 22" stroke-width="2.2" />
+      <text class="cover-small" x="70" y="190">DAC8871 · DDS</text>
+    </>}
+    {name === 'verilog' && <>
+      <path d={clock} stroke-width="1.6" opacity=".55" />
+      <rect class="cover-trace" pathLength="1" x="196" y="70" width="96" height="84" rx="8" stroke-width="2.4" />
+      <path d="M196 136l12 8-12 8" stroke-width="1.8" />
+      <path class="cover-trace" pathLength="1" d="M110 94h86M292 94h70M140 146h56" stroke-width="2.4" />
+      <text class="cover-label" x="212" y="99">D</text><text class="cover-label" x="276" y="99" text-anchor="end">Q</text>
+      <text class="cover-small" x="110" y="84">d</text><text class="cover-small" x="120" y="138">clk</text>
+      <rect class="cover-hot-soft" x="362" y="76" width="104" height="36" rx="6" stroke-width="2" />
+      <text class="cover-label" x="414" y="99" text-anchor="middle">0 1 2 3</text>
+      <text class="cover-small" x="110" y="186">always @(posedge clk)  q &lt;= d;</text>
+    </>}
+  </svg>
+</div> : <ProjectArt diagram={diagram} />}

@@ -10,6 +10,7 @@ tools: ["Vivado 2020.2"]
 tags: ["Zynq", "继电器", "GPIO", "隔离"]
 accent: "orange"
 diagram: "circuit"
+cover: "relay"
 draft: false
 sample: false
 ---

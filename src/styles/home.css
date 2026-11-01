@@ -197,7 +197,7 @@
 .home-content .lab-secondary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .home-content .card-reveal { display: flex; min-width: 0; }
 .home-content .card-reveal > a { width: 100%; }
-.home-content .experiment-card { border-radius: var(--home-radius); min-height: 258px; padding: 22px; }
+.home-content .experiment-card { border-radius: var(--home-radius); min-height: 258px; --card-pad: 22px; }
 .home-content .experiment-card-top { gap: 6px; flex-wrap: wrap; }
 .home-content .experiment-card h3 { font-size: 17px; }
 .home-content .experiment-card > p { font-size: var(--text-small); }
@@ -303,7 +303,7 @@
   .home-content .featured-copy { padding: 21px; }
   .home-content .featured-copy h3 { font-size: 16px; }
   .home-content .lab-secondary { gap: 14px; }
-  .home-content .experiment-card { padding: 19px; }
+  .home-content .experiment-card { --card-pad: 19px; }
   .home-content .experiment-card-top .card-arrow { display: none; }
   .home-content .explore-card { padding: 22px; }
 }
@@ -387,7 +387,7 @@
   .home-content .featured-copy h3 { font-size: 18px; }
   .home-content .featured-copy > p { font-size: var(--text-small); }
   .home-content .lab-secondary { grid-template-columns: minmax(0, 1fr); gap: 14px; }
-  .home-content .experiment-card { padding: 22px; min-height: 0; }
+  .home-content .experiment-card { --card-pad: 22px; min-height: 0; }
   .home-content .experiment-card h3 { font-size: 17px; }
   .home-content .journal-layout { grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .home-content .journal-featured { grid-row: auto; }

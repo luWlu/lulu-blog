@@ -10,6 +10,7 @@ tools: ["Vivado 2020.2", "Icarus Verilog", "Node.js", "GTKWave"]
 tags: ["Zynq", "AD采集", "LTC2328", "滑窗滤波", "最小二乘校准"]
 accent: "purple"
 diagram: "circuit"
+cover: "adc"
 draft: false
 sample: false
 ---

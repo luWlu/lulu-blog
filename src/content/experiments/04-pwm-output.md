@@ -10,6 +10,7 @@ tools: ["Vivado", "Icarus Verilog", "示波器", "外部直流电源"]
 tags: ["Zynq", "PWM", "占空比", "示波器", "仿真"]
 accent: "orange"
 diagram: "wave"
+cover: "pwm"
 draft: false
 sample: false
 ---

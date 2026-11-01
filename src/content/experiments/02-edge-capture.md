@@ -10,6 +10,7 @@ tools: ["Vivado", "Icarus Verilog", "信号发生器", "示波器"]
 tags: ["Zynq", "数字I/O", "边沿检测", "仿真"]
 accent: "purple"
 diagram: "wave"
+cover: "edge"
 draft: false
 sample: false
 ---

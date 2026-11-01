@@ -3,6 +3,7 @@ title: "Verilog 基础手记：触发器、边沿检测与计数器"
 description: "整理 HDLBits 练习中的触发器、边沿检测、BCD 级联、特殊循环计数与赋值语义，区分题目逻辑模型和 FPGA 实现边界。"
 date: 2026-10-15
 category: "Verilog"
+cover: "verilog"
 tags: ["Verilog", "HDLBits", "时序逻辑", "计数器"]
 sample: false
 draft: false

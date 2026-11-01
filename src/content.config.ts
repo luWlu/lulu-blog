@@ -1,6 +1,7 @@
 import { defineCollection } from 'astro:content';
 import { z } from 'astro/zod';
 import { glob } from 'astro/loaders';
+import { coverNames } from './lib/covers';
 
 const common = {
   title: z.string(),
@@ -9,6 +10,8 @@ const common = {
   tags: z.array(z.string()).default([]),
   draft: z.boolean().default(false),
   sample: z.boolean().default(false),
+  // 专属封面，见 src/lib/covers.ts；不填时用 diagram 对应的通用插图。
+  cover: z.enum(coverNames).optional(),
 };
 
 const notes = defineCollection({

@@ -2169,9 +2169,10 @@ kbd {
   gap: 18px;
 }
 .experiment-card {
+  --card-pad: 23px;
   display: flex;
   flex-direction: column;
-  padding: 23px;
+  padding: var(--card-pad);
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -2180,6 +2181,7 @@ kbd {
     border-color 0.2s,
     box-shadow 0.2s;
   min-height: 255px;
+  overflow: hidden;
 }
 .experiment-card:hover {
   transform: translateY(-4px);
@@ -2405,7 +2407,7 @@ kbd {
   }
   .experiment-card {
     min-height: 0;
-    padding: 22px;
+    --card-pad: 22px;
   }
   .experiment-path li {
     flex: 1 1 45%;

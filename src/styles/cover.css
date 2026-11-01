@@ -1,0 +1,90 @@
+/* ---------- 文章封面 ----------
+ * 线条颜色取自 .project-art 的 currentColor（随 accent 和主题切换），
+ * 强调色 --cover-hot 用于每张封面里「最关键的那条信号」。 */
+:root { --cover-hot: #e0703f; }
+:root[data-theme='dark'] { --cover-hot: #efa17f; }
+
+.cover text { fill: currentColor; stroke: none; font-family: var(--mono, monospace); }
+.cover-caption { font-size: 11px; letter-spacing: 1.2px; opacity: .72; }
+.cover-label { font-size: 14px; font-weight: 600; }
+.cover-small { font-size: 11px; opacity: .78; }
+.cover-dots { opacity: .13; }
+.cover .cover-hot { stroke: var(--cover-hot); }
+.cover-hot-fill { fill: var(--cover-hot); stroke: none; }
+.cover-hot-soft { stroke: var(--cover-hot); fill: color-mix(in srgb, var(--cover-hot) 14%, transparent); }
+.cover-glow { fill: color-mix(in srgb, var(--cover-hot) 20%, transparent); stroke: none; }
+.cover-flow { stroke-dasharray: 4 6; opacity: .7; }
+
+/* 实验卡片顶部的封面条：贴满卡片边缘 */
+.experiment-card-cover {
+  margin: calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad)) 20px;
+  border-bottom: 1px solid var(--line);
+}
+.experiment-card-cover .project-art { height: 136px; }
+.cover svg, .experiment-card-cover svg { transition: transform 450ms var(--ease-out, ease); }
+/* 首页主推实验左上角已有 STEP 标签，封面说明文字让位 */
+.featured-visual .cover-caption { display: none; }
+.home-content .journal-cover--art { padding: 0; background: var(--art-bg); }
+.home-content .journal-cover--art .project-art { width: 100%; height: 100%; min-height: inherit; }
+
+@keyframes cover-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes cover-flow { to { stroke-dashoffset: -20; } }
+@keyframes cover-blink { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: no-preference) {
+  /* 进入视口时主线条依次「描」出来；没有 JS 时线条直接可见 */
+  .cover.is-pending .cover-trace { stroke-dasharray: 1; stroke-dashoffset: 1; }
+  .cover.is-drawn .cover-trace { stroke-dasharray: 1; animation: cover-draw 1200ms var(--ease-out, ease) both; }
+  .cover.is-drawn .cover-trace:nth-of-type(2) { animation-delay: 120ms; }
+  .cover.is-drawn .cover-trace:nth-of-type(3) { animation-delay: 240ms; }
+  .cover.is-drawn .cover-trace:nth-of-type(n + 4) { animation-delay: 360ms; }
+}
+@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  /* 悬停时信号虚线开始流动，LED 闪一闪，插画轻轻放大 */
+  :is(.experiment-card, .featured-experiment, .project-card, .note-card, .article-project-art):hover .cover-flow { animation: cover-flow 900ms linear infinite; }
+  :is(.experiment-card, .featured-experiment, .note-card, .article-project-art):hover .cover-glow { animation: cover-blink 1s steps(1) infinite; }
+  .experiment-card:hover .experiment-card-cover svg,
+  .note-card:hover .journal-cover--art svg { transform: scale(1.05); }
+}
+
+/* ---------- 实验列表 ---------- */
+/* 只有两个实验的阶段改为两列平分，不留空第三列 */
+@media (min-width: 1001px) {
+  .experiments-grid:has(> :nth-child(2):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .experiments-grid:has(> :nth-child(2):last-child) .experiment-card-cover .project-art { height: 168px; }
+}
+/* 学习路径：一条贯穿的走线 + 节点，像电路板上的测试点 */
+.experiment-path { position: relative; gap: 8px; }
+.experiment-path::before {
+  content: '';
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  top: 21px;
+  border-top: 2px dashed color-mix(in srgb, var(--purple) 32%, transparent);
+}
+.experiment-path a { position: relative; padding: 30px 12px 12px; border-radius: var(--radius-md); }
+.experiment-path i {
+  position: absolute;
+  top: 15px;
+  left: 12px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--purple);
+  border-radius: 50%;
+  background: var(--surface);
+  transition: background 200ms ease, transform 200ms var(--ease-spring, ease);
+}
+.experiment-path a:hover i { background: var(--purple); transform: scale(1.2); }
+.experiment-path b { margin-top: 2px; }
+.experiment-path em { color: var(--text); font-weight: 600; font-size: 13px; line-height: 1.55; }
+@media (max-width: 640px) { .experiment-path::before { display: none; } }
+
+/* 文章标题的括号部分作为一个整体换行 */
+.title-aside { display: inline-block; }
+
+/* 首页「项目」栏目暂时没有内容时，只保留一行提示 */
+.empty-state.empty-state--inline { flex-direction: row; justify-content: flex-start; gap: 16px; padding: 20px 24px; text-align: left; }
+.empty-state--inline h3 { font-size: 16px; }
+.empty-state--inline p { margin-top: 2px; }
+/* 首页的实验卡片比列表页窄，封面条压低一点 */
+.home-content .experiment-card-cover .project-art { height: 128px; }

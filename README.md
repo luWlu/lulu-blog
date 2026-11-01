@@ -92,6 +92,7 @@ draft: false
 - `tools`：用到的工具与仪器，名称写成双引号字符串，例如 `["Vivado 2020.2", "示波器"]`；版本未知时只写 `"Vivado"`，不推测补齐。
 - `accent`：`purple` / `lime` / `orange`，控制详情页顶部插画配色。
 - `diagram`：`wave` / `board` / `circuit`，控制详情页顶部插画。
+- `cover`（可选）：专属封面，`led` / `relay` / `edge` / `pulse` / `pwm` / `adc` / `dac` / `verilog`，定义在 `src/lib/covers.ts` 与 `src/components/Cover.astro`；填了会覆盖 `diagram`。
 
 正文推荐结构：这个实验要解决什么 → 硬件连接（接线表）→ 原理与关键代码 → 仿真验证 → 上板步骤 → 踩过的坑 → 下一步。
 

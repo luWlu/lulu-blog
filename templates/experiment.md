@@ -21,6 +21,7 @@ sample: false
 2. order 决定「学习路径」里的 STEP 编号和排序，接着现有的往下排即可。
 3. stage 只能是：前置 / 基础 / 进阶
 4. accent 只能是：purple / lime / orange    diagram 只能是：wave / board / circuit
+   可选 cover: "led"（专属封面，可选 led / relay / edge / pulse / pwm / adc / dac / verilog；不写就用 diagram 通用插图）
 5. 写完后把 draft 改成 false，并在本地 npm run dev 看一眼版式。
 6. 正文从下面的 ## 开始写，不要写 # 一级标题。
 -->
