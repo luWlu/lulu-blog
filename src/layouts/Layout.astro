@@ -3,6 +3,7 @@ import '../styles/global.css';
 import '../styles/motion.css';
 import '../styles/backdrop.css';
 import '../styles/cover.css';
+import '../styles/cursor.css';
 import Icon from '../components/Icon.astro';
 import Backdrop from '../components/Backdrop.astro';
 import { site, url } from '../lib/site';
@@ -115,6 +116,7 @@ const articleSchema = article && canonical ? {
     </dialog>
     <script>
       import '../scripts/site';
+      import '../scripts/cursor';
     </script>
   </body>
 </html>

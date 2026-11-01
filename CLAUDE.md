@@ -9,8 +9,8 @@
   - `experiments/`：Zynq 实验长文，按 `order` 组成学习路径（STEP 00 起），按 `stage` 分组。
   - `notes/`：学习笔记，按 `category` 生成筛选按钮。
   - `projects/`：项目展示，目前没有正式条目，只有 `draft: true` 的示例。
-- 样式是原生 CSS：`global.css`（主题变量 + 大部分组件）、`home.css`（首页）、`article.css`（正文）、`motion.css`（全站动效）、`backdrop.css`（背景贴纸）、`cover.css`（封面、实验列表）。
-- 交互是少量原生 TS：`src/scripts/site.ts`（主题、搜索、滚动浮现、封面描线）、`src/scripts/article.ts`（目录、代码复制、表格）。不引入 React/Vue 等框架、外部字体或 CDN。
+- 样式是原生 CSS：`global.css`（主题变量 + 大部分组件）、`home.css`（首页）、`article.css`（正文）、`motion.css`（全站动效）、`backdrop.css`（背景贴纸）、`cover.css`（封面、实验列表）、`cursor.css`（自定义指针与光晕）。
+- 交互是少量原生 TS：`src/scripts/site.ts`（主题、搜索、滚动浮现、封面描线）、`src/scripts/article.ts`（目录、代码复制、表格）、`src/scripts/cursor.ts`（指针光晕，只在有鼠标且未开启减弱动态时启用）。不引入 React/Vue 等框架、外部字体或 CDN。
 
 ## 命令
 

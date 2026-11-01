@@ -1,0 +1,66 @@
+/* ---------- 指针与光晕 ----------
+ * 只在有鼠标的设备上换成品牌色箭头；可点击处换成青柠色，输入框保留系统 I 形光标。
+ * 两种状态描边完全相同、只换填充色，切换时轮廓大小不变。
+ * 不加外圈：外圈若用页面底色，到了按钮底色上会露出来，看起来像指针变大了。
+ * SVG 数据里不能读 CSS 变量，色值照抄 global.css 的 --purple / --lime / --bg。 */
+@media (hover: hover) and (pointer: fine) {
+  :root {
+    --cursor-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M4 2.6v17.6l4.7-4.5 3.1 6.8 3.2-1.5-3.1-6.6h6.6z' fill='%237453de' stroke='%23523597' stroke-width='1.2' stroke-linejoin='round'/%3E%3C/svg%3E") 4 3, default;
+    --cursor-hand: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M4 2.6v17.6l4.7-4.5 3.1 6.8 3.2-1.5-3.1-6.6h6.6z' fill='%23d4ef95' stroke='%23523597' stroke-width='1.2' stroke-linejoin='round'/%3E%3C/svg%3E") 4 3, pointer;
+  }
+  :root[data-theme='dark'] {
+    --cursor-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M4 2.6v17.6l4.7-4.5 3.1 6.8 3.2-1.5-3.1-6.6h6.6z' fill='%23b49aff' stroke='%23b49aff' stroke-width='1.2' stroke-linejoin='round'/%3E%3C/svg%3E") 4 3, default;
+    --cursor-hand: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M4 2.6v17.6l4.7-4.5 3.1 6.8 3.2-1.5-3.1-6.6h6.6z' fill='%23c3dc8c' stroke='%23c3dc8c' stroke-width='1.2' stroke-linejoin='round'/%3E%3C/svg%3E") 4 3, pointer;
+  }
+  html { cursor: var(--cursor-arrow); }
+  :is(a[href], button:not(:disabled), summary, label[for], select, [role='button'], .search-result),
+  :is(a[href], button:not(:disabled), summary, label[for], [role='button']) * { cursor: var(--cursor-hand); }
+  :is(input:not([type='checkbox'], [type='radio'], [type='range']), textarea, [contenteditable='true']) { cursor: text; }
+}
+/* 高对比度模式交还系统指针，保证可辨认。 */
+@media (forced-colors: active) {
+  html, html * { cursor: auto !important; }
+}
+
+/* 光晕：跟随指针的柔光，位置由 cursor.ts 写入 translate。 */
+.cursor-glow { display: none; }
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .cursor-glow {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 25;
+    display: block;
+    width: 280px;
+    height: 280px;
+    margin: -140px 0 0 -140px;
+    border-radius: 50%;
+    pointer-events: none;
+    background: radial-gradient(circle, color-mix(in srgb, var(--purple) 15%, transparent) 0%, color-mix(in srgb, var(--purple) 7%, transparent) 32%, transparent 68%);
+    opacity: 0;
+    scale: .6;
+    transition: opacity 320ms var(--ease-out), scale 420ms var(--ease-spring);
+    will-change: translate;
+  }
+  /* 中心的小亮点：停在可点击元素上时亮起青柠色 */
+  .cursor-glow::after {
+    content: '';
+    position: absolute;
+    inset: 110px;
+    border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--lime) 55%, transparent), transparent 70%);
+    opacity: 0;
+    transition: opacity 220ms ease;
+  }
+  /* 浅色用正片叠底、深色用滤色，光晕只染底色，不让文字发灰 */
+  .cursor-glow { mix-blend-mode: multiply; }
+  :root[data-theme='dark'] .cursor-glow {
+    mix-blend-mode: screen;
+    background: radial-gradient(circle, color-mix(in srgb, var(--purple) 22%, transparent) 0%, color-mix(in srgb, var(--purple) 9%, transparent) 32%, transparent 68%);
+  }
+  .cursor-glow.is-visible { opacity: 1; scale: 1; }
+  .cursor-glow.is-visible.is-hot { scale: 1.18; }
+  .cursor-glow.is-hot::after { opacity: 1; }
+  .cursor-glow.is-visible.is-pressed { scale: .82; transition-duration: 160ms; }
+}
+@media print { .cursor-glow { display: none !important; } }
