@@ -1,7 +1,9 @@
 ---
 import '../styles/global.css';
 import '../styles/motion.css';
+import '../styles/backdrop.css';
 import Icon from '../components/Icon.astro';
+import Backdrop from '../components/Backdrop.astro';
 import { site, url } from '../lib/site';
 
 interface Props {
@@ -80,6 +82,7 @@ const articleSchema = article && canonical ? {
   </head>
   <body class:list={{ 'home-page': active === 'home' }}>
     <a class="skip-link" href="#main">跳到主要内容</a>
+    <Backdrop />
     <header class="site-header">
       <div class="header-inner container">
         <a class="brand" href={url()} aria-label="lulu's blog 首页"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>lulu<span class="brand-apostrophe">’</span>s blog<span class="brand-dot">.</span></span></a>

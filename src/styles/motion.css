@@ -10,6 +10,12 @@
 @view-transition { navigation: auto; }
 .site-header { view-transition-name: site-header; }
 ::view-transition-group(site-header) { z-index: 2; }
+/* 背景贴图跨页保持不动，只有内容区过渡 */
+.backdrop { view-transition-name: backdrop; }
+::view-transition-group(backdrop) { z-index: -1; }
+::view-transition-old(backdrop),
+::view-transition-new(backdrop) { animation: none; }
+html.theme-switching .backdrop { view-transition-name: none; }
 
 @keyframes page-leave { to { opacity: 0; transform: translateY(-6px); } }
 @keyframes page-enter { from { opacity: 0; transform: translateY(12px); } }

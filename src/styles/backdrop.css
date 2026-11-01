@@ -1,0 +1,109 @@
+/* ---------- 背景贴图 ----------
+ * 固定在视口后方：一层淡网格纸底纹 + 宽屏两侧留白里的手绘电子元件贴纸。
+ * 颜色全部取自主题变量，深浅色自动适配。 */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+.backdrop-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--purple) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--purple) 6%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
+  /* 中间阅读区更淡，四周稍明显，像笔记本纸张 */
+  mask-image: radial-gradient(ellipse 70% 80% at 50% 45%, #0003 0%, #000c 70%, #000 100%);
+}
+:root[data-theme='dark'] .backdrop-grid {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--purple) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--purple) 7%, transparent) 1px, transparent 1px);
+}
+
+.sticker {
+  position: absolute;
+  display: none;
+  color: var(--purple);
+  opacity: .22;
+  rotate: var(--tilt, 0deg);
+}
+.sticker text {
+  fill: currentColor;
+  font: 600 13px var(--mono);
+  letter-spacing: .5px;
+}
+:root[data-theme='dark'] .sticker { opacity: .2; }
+
+/* 贴纸位置：左右两列，避开中间内容区 */
+.sticker-chip { width: 104px; left: max(2.2vw, 18px); top: 22vh; --tilt: -8deg; }
+.sticker-sine { width: 132px; right: max(2vw, 16px); top: 17vh; --tilt: 6deg; color: var(--orange); opacity: .4; }
+.sticker-resistor { width: 118px; left: max(1.6vw, 14px); top: 58vh; --tilt: 12deg; }
+.sticker-pwm { width: 134px; right: max(1.8vw, 14px); top: 52vh; --tilt: -5deg; }
+.sticker-led { width: 92px; left: max(3.6vw, 26px); bottom: 7vh; --tilt: -14deg; color: var(--orange); opacity: .4; }
+.sticker-gate { width: 104px; right: max(3.4vw, 24px); bottom: 9vh; --tilt: 9deg; }
+.sticker-note {
+  left: max(1.2vw, 12px);
+  top: 40vh;
+  --tilt: -4deg;
+  flex-direction: column;
+  padding: 9px 10px 8px;
+  border-radius: 3px;
+  background: var(--note-bg);
+  color: var(--note-text);
+  font: 10px/1.6 var(--mono);
+  white-space: pre;
+  font-variant-ligatures: none;
+  opacity: .62;
+  box-shadow: 0 6px 16px #2a1f3a12;
+}
+.sticker-note::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 46px;
+  height: 15px;
+  translate: -50% 0;
+  rotate: 3deg;
+  background: var(--note-tape);
+}
+.sticker-spark { font-size: 26px; line-height: 1; color: var(--purple); opacity: .3; }
+.spark-a { left: 7.5vw; top: 13vh; }
+.spark-b { right: 8vw; top: 37vh; font-size: 20px; color: var(--orange); opacity: .45; }
+.spark-c { right: 6.5vw; bottom: 30vh; font-size: 18px; }
+.spark-d { left: 6.8vw; bottom: 27vh; font-size: 16px; color: var(--lime); opacity: .9; }
+:root[data-theme='dark'] .spark-d { opacity: .5; }
+
+/* 正文区 1160px，两侧各留 200px 以上（约 1560px 起）才显示贴纸，避免压到正文 */
+@media (min-width: 1560px) {
+  .sticker { display: block; }
+  .sticker-note { display: flex; }
+}
+/* 超宽屏贴纸往内收一点，不至于贴在屏幕边缘 */
+@media (min-width: 1680px) {
+  .backdrop { --edge: calc((100vw - 1160px) / 2 - 190px); }
+  .sticker-chip, .sticker-resistor, .sticker-note { left: max(2.2vw, var(--edge)); }
+  .sticker-sine, .sticker-pwm { right: max(2vw, var(--edge)); }
+}
+
+/* 缓慢漂浮，每张节奏不同 */
+@keyframes sticker-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -9px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sticker { animation: sticker-float var(--float, 9s) ease-in-out var(--float-delay, 0s) infinite; }
+  .sticker-sine { --float: 11s; --float-delay: -3s; }
+  .sticker-resistor { --float: 10s; --float-delay: -6s; }
+  .sticker-pwm { --float: 12s; --float-delay: -2s; }
+  .sticker-led { --float: 8s; --float-delay: -5s; }
+  .sticker-gate { --float: 13s; --float-delay: -8s; }
+  .sticker-note { --float: 14s; --float-delay: -4s; }
+  .sticker-spark { --float: 7s; }
+}
+@media print { .backdrop { display: none; } }

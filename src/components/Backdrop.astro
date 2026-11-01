@@ -1,0 +1,55 @@
+---
+// 背景贴图：固定在内容后方的手账风装饰，呼应博客主题（Zynq、波形采样、PWM、电路、Verilog）。
+// 贴图只出现在宽屏两侧留白；窄屏只保留淡淡的网格纸底纹，不打扰阅读。
+---
+<div class="backdrop" aria-hidden="true">
+  <div class="backdrop-grid"></div>
+
+  <svg class="sticker sticker-chip" viewBox="0 0 120 120">
+    <g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+      <rect x="28" y="28" width="64" height="64" rx="7" />
+      <path d="M36 28V16M48 28V16M60 28V16M72 28V16M84 28V16M36 104V92M48 104V92M60 104V92M72 104V92M84 104V92M28 36H16M28 48H16M28 60H16M28 72H16M28 84H16M104 36H92M104 48H92M104 60H92M104 72H92M104 84H92" />
+    </g>
+    <circle cx="39" cy="39" r="3.2" fill="currentColor" />
+    <text x="60" y="65" text-anchor="middle">ZYNQ</text>
+  </svg>
+
+  <svg class="sticker sticker-sine" viewBox="0 0 160 90">
+    <path d="M4 45H156" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="3 5" opacity=".6" />
+    <path d="M30 45V17.3M74 45V72.7M118 45V17.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2 4" opacity=".6" />
+    <path d="M8 45C22 8 38 8 52 45S82 82 96 45S126 8 140 45" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" />
+    <g fill="currentColor"><circle cx="8" cy="45" r="3.6" /><circle cx="30" cy="17.3" r="3.6" /><circle cx="52" cy="45" r="3.6" /><circle cx="74" cy="72.7" r="3.6" /><circle cx="96" cy="45" r="3.6" /><circle cx="118" cy="17.3" r="3.6" /><circle cx="140" cy="45" r="3.6" /></g>
+    <text x="150" y="84" text-anchor="end">AD · 8bit</text>
+  </svg>
+
+  <svg class="sticker sticker-resistor" viewBox="0 0 150 56">
+    <path d="M4 25H34l6-12 12 24 12-24 12 24 12-24 12 24 6-12h40" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="70" y="54" text-anchor="middle">10kΩ</text>
+  </svg>
+
+  <div class="sticker sticker-note"><span>always @(posedge clk)</span><span>&nbsp;&nbsp;led &lt;= ~led;</span></div>
+
+  <svg class="sticker sticker-pwm" viewBox="0 0 170 84">
+    <path d="M6 64H26V20H52V64H70V20H106V64H118V20H160" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M26 76H52" fill="none" stroke="currentColor" stroke-width="1.4" />
+    <path d="M26 72v8M52 72v8" fill="none" stroke="currentColor" stroke-width="1.4" />
+    <text x="6" y="12">PWM</text>
+  </svg>
+
+  <svg class="sticker sticker-led" viewBox="0 0 120 100">
+    <g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 58H40M72 58H114M72 38V78" />
+      <path d="M40 38V78L72 58Z" />
+      <path d="M66 30 80 16m-7 0h7v7M80 36l14-14m-7 0h7v7" />
+    </g>
+  </svg>
+
+  <svg class="sticker sticker-gate" viewBox="0 0 130 80">
+    <path d="M6 26H40M6 54H40M40 12H64A28 28 0 0 1 64 68H40ZM92 40H124" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+
+  <span class="sticker sticker-spark spark-a">✳</span>
+  <span class="sticker sticker-spark spark-b">✦</span>
+  <span class="sticker sticker-spark spark-c">✳</span>
+  <span class="sticker sticker-spark spark-d">✦</span>
+</div>
