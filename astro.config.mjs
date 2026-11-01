@@ -8,6 +8,8 @@ export default defineConfig({
   output: 'static',
   devToolbar: { enabled: false },
   trailingSlash: 'always',
+  // 悬停/触摸链接时预取下一页，配合跨页面过渡让切换几乎无等待。
+  prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
   markdown: {
     processor: unified({ remarkPlugins: [stripHtmlComments] }),
     shikiConfig: {

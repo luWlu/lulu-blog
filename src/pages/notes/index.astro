@@ -23,7 +23,17 @@ const publishedCount = notes.filter(note => !note.data.sample).length;
     const empty = document.querySelector<HTMLElement>('#filter-empty');
     function filter(category: string) {
       let visible = 0;
-      cards.forEach(card => { card.hidden = category !== 'all' && card.dataset.category !== category; if (!card.hidden) visible++; });
+      cards.forEach(card => {
+        card.hidden = category !== 'all' && card.dataset.category !== category;
+        card.classList.remove('is-refiltered');
+        if (card.hidden) return;
+        // 筛选后的卡片直接显示，不再等待滚动浮现；重新触发一次弹入动画。
+        card.classList.add('is-shown');
+        card.style.setProperty('--i', String(Math.min(visible, 6)));
+        void card.offsetWidth;
+        card.classList.add('is-refiltered');
+        visible++;
+      });
       tabs.forEach(tab => { const active = tab.dataset.filter === category; tab.classList.toggle('active', active); tab.setAttribute('aria-pressed', String(active)); });
       if (count) count.textContent = `${visible} 篇内容`;
       if (empty) empty.hidden = visible > 0;

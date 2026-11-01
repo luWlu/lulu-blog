@@ -1,0 +1,107 @@
+/* ---------- 全站动效 ----------
+ * 全部动效都包在 prefers-reduced-motion: no-preference 里；
+ * 系统开启「减弱动态效果」时只保留瞬时切换。 */
+:root {
+  --ease-out: cubic-bezier(.2, .65, .3, 1);
+  --ease-spring: cubic-bezier(.34, 1.4, .64, 1);
+}
+
+/* 跨页面过渡：浏览器原生 View Transitions，不支持的浏览器照常跳转。 */
+@view-transition { navigation: auto; }
+.site-header { view-transition-name: site-header; }
+::view-transition-group(site-header) { z-index: 2; }
+
+@keyframes page-leave { to { opacity: 0; transform: translateY(-6px); } }
+@keyframes page-enter { from { opacity: 0; transform: translateY(12px); } }
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) { animation: page-leave 160ms ease-in both; }
+  ::view-transition-new(root) { animation: page-enter 380ms var(--ease-out) 60ms both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
+}
+
+/* 主题切换：从按钮位置扩散的圆形揭幕。 */
+html.theme-switching .site-header { view-transition-name: none; }
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after { transition: none !important; }
+@keyframes theme-reveal {
+  from { clip-path: circle(0 at var(--theme-x, 50%) var(--theme-y, 0)); }
+  to { clip-path: circle(var(--theme-r, 150vmax) at var(--theme-x, 50%) var(--theme-y, 0)); }
+}
+html.theme-switching::view-transition-old(root) { animation: none; }
+html.theme-switching::view-transition-new(root) { animation: theme-reveal 560ms cubic-bezier(.4, 0, .2, 1) both; }
+
+/* 主题按钮图标：旋转淡入。 */
+@keyframes icon-spin-in { from { opacity: 0; transform: rotate(-90deg) scale(.6); } }
+@media (prefers-reduced-motion: no-preference) {
+  html[data-theme-animated] #theme-toggle svg { animation: icon-spin-in 420ms var(--ease-spring); }
+  .icon-button svg { transition: transform 220ms var(--ease-spring); }
+  .icon-button:hover svg { transform: scale(1.1); }
+  .icon-button:active svg { transform: scale(.92); }
+}
+
+/* 搜索弹窗与移动端菜单展开。 */
+@keyframes dialog-in { from { opacity: 0; transform: translateY(-10px) scale(.97); } }
+@keyframes backdrop-in { from { opacity: 0; } }
+@keyframes menu-item-in { from { opacity: 0; transform: translateX(-8px); } }
+@keyframes result-in { from { opacity: 0; transform: translateY(4px); } }
+@media (prefers-reduced-motion: no-preference) {
+  .search-dialog[open] { animation: dialog-in 240ms var(--ease-out); }
+  .search-dialog[open]::backdrop { animation: backdrop-in 240ms ease; }
+  .search-result { animation: result-in 260ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 28ms); }
+  .mobile-nav:not([hidden]) a { animation: menu-item-in 300ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 40ms); }
+}
+
+/* 滚动浮现：只给首屏以下的元素加 data-pending，脚本失败时内容依然可见。 */
+@media (prefers-reduced-motion: no-preference) {
+  [data-pending] { opacity: 0; transform: translateY(18px); }
+  [data-pending].is-shown {
+    opacity: 1;
+    transform: none;
+    transition: opacity 560ms var(--ease-out), transform 560ms var(--ease-out);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+}
+@media print {
+  [data-pending] { opacity: 1 !important; transform: none !important; }
+}
+
+/* 回到顶部 */
+.back-to-top {
+  position: fixed;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  z-index: 15;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  color: var(--purple);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(12px) scale(.9);
+  transition: opacity 240ms ease, transform 240ms var(--ease-spring), visibility 0s linear 240ms, background 180ms ease;
+}
+.back-to-top.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition-delay: 0s;
+}
+.back-to-top:hover { background: var(--purple-soft); }
+.back-to-top svg { transform: rotate(-90deg); }
+@media print { .back-to-top { display: none; } }
+#main:focus { outline: none; }
+
+/* 学习记录筛选：切换分类时卡片轻轻弹入。 */
+@keyframes card-pop { from { opacity: 0; transform: translateY(10px) scale(.98); } }
+@media (prefers-reduced-motion: no-preference) {
+  .listing-grid > .is-refiltered { animation: card-pop 380ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 45ms); }
+}

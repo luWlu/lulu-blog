@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import '../styles/motion.css';
 import Icon from '../components/Icon.astro';
 import { site, url } from '../lib/site';
 
@@ -92,10 +93,11 @@ const articleSchema = article && canonical ? {
         </div>
       </div>
       <nav id="mobile-nav" class="mobile-nav container" aria-label="移动端导航" hidden>
-        {navigation.map(item => <a href={url(item.path)} aria-current={active === item.key ? 'page' : undefined}>{item.label}</a>)}
+        {navigation.map((item, index) => <a href={url(item.path)} aria-current={active === item.key ? 'page' : undefined} style={`--i: ${index}`}>{item.label}</a>)}
       </nav>
     </header>
-    <main id="main"><slot /></main>
+    <main id="main" tabindex="-1"><slot /></main>
+    <button class="back-to-top" type="button" aria-label="回到顶部" title="回到顶部" tabindex="-1"><Icon name="right" size={19} /></button>
     <footer class="site-footer container">
       <div class="footer-top"><a class="footer-brand" href={url()}>lulu's blog<span>✳</span></a><p>保持好奇，慢慢积累。<br /><span>Made of little experiments & big questions.</span></p><a class="rss-link" href={url('rss.xml')}><Icon name="rss" size={17} /> RSS 订阅</a></div>
       <div class="footer-bottom"><span>© {new Date().getFullYear()} lulu · 学习记录与项目手记</span><span class="footer-note">记录每一次「原来如此」。<span class="tiny-dot"></span></span></div>

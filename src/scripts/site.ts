@@ -11,14 +11,37 @@ function syncThemeLabel() {
   );
 }
 syncThemeLabel();
-toggle?.addEventListener('click', () => {
-  const theme =
-    document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-  document.documentElement.dataset.theme = theme;
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+function applyTheme(theme: string) {
+  const root = document.documentElement;
+  root.dataset.theme = theme;
+  root.dataset.themeAnimated = '';
   try {
     localStorage.setItem('lulu-theme', theme);
   } catch {}
   syncThemeLabel();
+}
+toggle?.addEventListener('click', () => {
+  const root = document.documentElement;
+  const theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+  if (!document.startViewTransition || reducedMotion.matches) {
+    applyTheme(theme);
+    return;
+  }
+  // 以按钮中心为圆心，半径取到视口最远角，新主题从按钮处扩散铺满。
+  const bounds = toggle!.getBoundingClientRect();
+  const x = bounds.left + bounds.width / 2;
+  const y = bounds.top + bounds.height / 2;
+  const radius = Math.hypot(
+    Math.max(x, window.innerWidth - x),
+    Math.max(y, window.innerHeight - y),
+  );
+  root.style.setProperty('--theme-x', `${x}px`);
+  root.style.setProperty('--theme-y', `${y}px`);
+  root.style.setProperty('--theme-r', `${radius}px`);
+  root.classList.add('theme-switching');
+  const transition = document.startViewTransition(() => applyTheme(theme));
+  transition.finished.finally(() => root.classList.remove('theme-switching'));
 });
 matchMedia('(prefers-color-scheme: dark)').addEventListener(
   'change',
@@ -129,6 +152,7 @@ function renderResults() {
     description.textContent = entry.description;
     link.append(kind, title, description);
     const index = resultLinks.length;
+    link.style.setProperty('--i', String(Math.min(index, 8)));
     link.addEventListener('focus', () => selectResult(index));
     resultLinks.push(link);
     fragment.append(link);
@@ -231,5 +255,86 @@ document.addEventListener('keydown', (event) => {
     void openSearch();
   }
 });
+
+// 滚动浮现：列表卡片、栏目标题等在进入视口时淡入上移。
+// 只处理首屏以下的元素，首屏内容不会闪烁；首页有自己的 HomeMotion。
+const revealSelector = [
+  '.listing-grid > *',
+  '.experiments-grid > *',
+  '.projects-grid > *',
+  '.experiment-group-title',
+  '.workshop-note',
+  '.listing-end',
+  '.about-grid > *',
+  '.about-topics',
+  '.prose > :is(h2, figure, .code-block, .table-scroll, p:has(> img))',
+  '.article-end',
+].join(', ');
+if (
+  !reducedMotion.matches &&
+  'IntersectionObserver' in window &&
+  !document.querySelector('[data-home]')
+) {
+  const revealObserver = new IntersectionObserver(
+    (observed) => {
+      for (const entry of observed) {
+        if (!entry.isIntersecting) continue;
+        entry.target.classList.add('is-shown');
+        revealObserver.unobserve(entry.target);
+      }
+    },
+    { rootMargin: '0px 0px -6% 0px', threshold: 0.01 },
+  );
+  // 同一行的兄弟元素依次错开出现。
+  const rowDelay = new Map<Element, number>();
+  document.querySelectorAll<HTMLElement>(revealSelector).forEach((element) => {
+    if (element.hidden) return;
+    if (element.getBoundingClientRect().top < window.innerHeight) return;
+    const parent = element.parentElement;
+    const top = Math.round(element.offsetTop);
+    const key = parent ?? element;
+    const step = rowDelay.get(key) ?? 0;
+    const previous = element.previousElementSibling as HTMLElement | null;
+    const sameRow = previous && Math.round(previous.offsetTop) === top;
+    const delay = sameRow ? Math.min(step + 1, 4) : 0;
+    rowDelay.set(key, delay);
+    element.style.setProperty('--reveal-delay', `${delay * 70}ms`);
+    element.dataset.pending = '';
+    revealObserver.observe(element);
+  });
+  // 从目录或锚点跳到下方时，避免目标还处于透明状态。
+  window.addEventListener('hashchange', () => {
+    document
+      .querySelectorAll('[data-pending]:not(.is-shown)')
+      .forEach((element) => {
+        if (element.getBoundingClientRect().top < window.innerHeight)
+          element.classList.add('is-shown');
+      });
+  });
+}
+
+// 回到顶部：滚过一屏半后出现。
+const backToTop = document.querySelector<HTMLButtonElement>('.back-to-top');
+if (backToTop) {
+  let backFrame = 0;
+  const updateBackToTop = () => {
+    backFrame = 0;
+    const visible = window.scrollY > window.innerHeight * 1.5;
+    backToTop.classList.toggle('is-visible', visible);
+    backToTop.tabIndex = visible ? 0 : -1;
+  };
+  window.addEventListener(
+    'scroll',
+    () => {
+      if (!backFrame) backFrame = requestAnimationFrame(updateBackToTop);
+    },
+    { passive: true },
+  );
+  backToTop.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: reducedMotion.matches ? 'auto' : 'smooth' });
+    document.querySelector<HTMLElement>('#main')?.focus({ preventScroll: true });
+  });
+  updateBackToTop();
+}
 
 export {};
