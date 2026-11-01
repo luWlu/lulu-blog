@@ -8,6 +8,7 @@ export const covers = {
   adc: 'SAMPLE → FILTER → CALIBRATE',
   dac: 'DDS LUT → DAC',
   verilog: 'D FLIP-FLOP · COUNTER',
+  uart: 'UART FRAME → RX FIFO',
 } as const;
 
 export type CoverName = keyof typeof covers;

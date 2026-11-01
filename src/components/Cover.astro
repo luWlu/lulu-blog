@@ -43,6 +43,12 @@ let stairs = `M70 ${fixed(sine(70))}`;
 for (let x = 70; x < 350; x += 14) stairs += `H${x + 14}V${fixed(sine(x + 14))}`;
 const ideal = Array.from({ length: 71 }, (_, i) => `${i ? 'L' : 'M'}${70 + i * 4} ${fixed(sine(70 + i * 4))}`).join('');
 
+// UART：0x55 一帧（空闲高 → 起始位 → LSB 先发的 8 位 → 停止位），虚线是每一位中点的采样时刻。
+const uartBits = [0, 1, 0, 1, 0, 1, 0, 1, 0, 1];
+const uartFrame = wave(60, 110, 70, [[24, 1], ...uartBits.map((level): [number, number] => [26, level]), [10, 1], [30, 1]]);
+const uartLabels = ['S', '0', '1', '2', '3', '4', '5', '6', '7', 'P'].map((label, i) => ({ label, x: 97 + i * 26 }));
+const uartSamples = uartLabels.map(({ x }) => `M${x} 62v56`).join('');
+
 const ticks = Array.from({ length: 21 }, (_, i) => `M${130 + i * 10} 148v${i % 5 ? 5 : 9}`).join('');
 const caption = name ? covers[name] : '';
 ---
@@ -132,6 +138,20 @@ const caption = name ? covers[name] : '';
       <rect class="cover-hot-soft" x="362" y="76" width="104" height="36" rx="6" stroke-width="2" />
       <text class="cover-label" x="414" y="99" text-anchor="middle">0 1 2 3</text>
       <text class="cover-small" x="110" y="186">always @(posedge clk)  q &lt;= d;</text>
+    </>}
+    {name === 'uart' && <>
+      <path class="cover-flow" d={uartSamples} stroke-width="1.2" />
+      <path class="cover-trace cover-hot" pathLength="1" d={uartFrame} stroke-width="2.8" />
+      <circle class="cover-glow" cx="84" cy="90" r="16" />
+      {uartLabels.map(bit => <text class="cover-small" x={bit.x} y="138" text-anchor="middle">{bit.label}</text>)}
+      <rect class="cover-trace" pathLength="1" x="402" y="52" width="80" height="100" rx="9" stroke-width="2.4" />
+      <path d="M412 78h60M412 96h60M412 114h60" stroke-width="1.4" opacity=".5" />
+      <rect class="cover-hot-soft" x="412" y="122" width="60" height="22" rx="4" stroke-width="1.8" />
+      <path d="M380 70h22M394 64l8 6-8 6" stroke-width="1.8" />
+      <text class="cover-small" x="442" y="72" text-anchor="middle">RX FIFO</text>
+      <text class="cover-small" x="442" y="172" text-anchor="middle">64 B</text>
+      <text class="cover-small" x="60" y="180">0x55 · 115200-8-N-1</text>
+      <text class="cover-small" x="490" y="30" text-anchor="end">8.68 µs / bit</text>
     </>}
   </svg>
 </div> : <ProjectArt diagram={diagram} />}

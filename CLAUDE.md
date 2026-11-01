@@ -72,7 +72,7 @@ npm run verify:build   # 检查产物链接、锚点、元信息、收录范围
 
 ## 封面
 
-- 封面定义在 `src/lib/covers.ts`（名字 → 左上角说明文字）和 `src/components/Cover.astro`（每个名字一段 SVG）。现有封面：`led`、`relay`、`edge`、`pulse`、`pwm`、`adc`、`dac`、`verilog`。
+- 封面定义在 `src/lib/covers.ts`（名字 → 左上角说明文字）和 `src/components/Cover.astro`（每个名字一段 SVG）。现有封面：`led`、`relay`、`edge`、`pulse`、`pwm`、`adc`、`dac`、`verilog`、`uart`。
 - 在 frontmatter 里写 `cover: "adc"` 就会启用，卡片、首页、文章头图共用同一张。
 - 没写 `cover` 时：实验和项目回落到 `diagram` 对应的通用插图；**笔记没有 `diagram` 字段，文章页不会有头图，首页主推位只显示一个书本图标**。
 - **每篇新实验、新笔记都要有专属封面。** 现有封面能准确表达主题就复用（比如另一篇 Verilog 时序笔记可以用 `verilog`）；不能的话就新画一张，不要借用不相关的。
